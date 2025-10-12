@@ -630,6 +630,14 @@
   if (stationAdderConfirmBtn) {
     stationAdderConfirmBtn.addEventListener("click", confirmAddStation);
   }
+  if (stationAdderNameInput) {
+    stationAdderNameInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        confirmAddStation();
+      }
+    });
+  }
   if (apparatusShowAdderBtn) {
     apparatusShowAdderBtn.addEventListener("click", showApparatusAdder);
   }
@@ -639,6 +647,16 @@
   if (apparatusAdderConfirmBtn) {
     apparatusAdderConfirmBtn.addEventListener("click", confirmAddApparatus);
   }
+  [apparatusAdderNumberInput, apparatusAdderIdInput, apparatusAdderNotesInput].forEach(input => {
+    if (input) {
+      input.addEventListener("keydown", e => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          confirmAddApparatus();
+        }
+      });
+    }
+  });
 
   if (backupButton) {
     backupButton.addEventListener("click", exportDataBackup);
@@ -1194,6 +1212,18 @@
         lockBodyScroll();
       }
     }
+
+    // Add Enter key handler for edit modal inputs
+    const editModalKeyHandler = (e) => {
+      if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        saveApparatusEdit();
+      }
+    };
+
+    editModalEl.addEventListener("keydown", editModalKeyHandler);
+    // Store handler so we can remove it later
+    editModalEl._keyHandler = editModalKeyHandler;
   }
 
   function closeEditModal() {
@@ -1201,6 +1231,11 @@
     if (editModalEl && editModalEl.style.display === "block") {
       editModalEl.style.display = "none";
       unlockBodyScroll();
+      // Remove the Enter key handler
+      if (editModalEl._keyHandler) {
+        editModalEl.removeEventListener("keydown", editModalEl._keyHandler);
+        editModalEl._keyHandler = null;
+      }
     }
   }
 

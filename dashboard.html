@@ -199,8 +199,10 @@
 
     .row-actions {
       display: flex;
+      flex-direction: column;
       align-items: flex-end;
       justify-content: flex-end;
+      gap: 0.5rem;
       flex: 0 0 auto;
     }
 
@@ -497,31 +499,33 @@
         </div>
         <div class="scrollable" id="apparatusList"></div>
         <div id="apparatusAdder" class="row add-row hidden">
-          <label class="field">
-            <span class="field-label">Number</span>
-            <input type="text" id="apparatusAdderNumber" placeholder="4527" />
-          </label>
-          <label class="field">
-            <span class="field-label">ID (optional)</span>
-            <input type="text" id="apparatusAdderId" placeholder="E1" />
-          </label>
-          <label class="field">
-            <span class="field-label">Type</span>
-            <select id="apparatusAdderType"></select>
-          </label>
-          <label class="field">
-            <span class="field-label">Notes (optional)</span>
-            <input type="text" id="apparatusAdderNotes" placeholder="Ready reserve" />
-          </label>
-          <label class="field">
-            <span class="field-label">Home Station</span>
-            <select id="apparatusAdderHome"></select>
-          </label>
-          <label class="field">
-            <span class="field-label">Current Station</span>
-            <select id="apparatusAdderStation"></select>
-          </label>
-          <div class="modal-actions">
+          <div class="row-body column">
+            <label class="field">
+              <span class="field-label">Number</span>
+              <input type="text" id="apparatusAdderNumber" placeholder="4527" />
+            </label>
+            <label class="field">
+              <span class="field-label">ID (optional)</span>
+              <input type="text" id="apparatusAdderId" placeholder="E1" />
+            </label>
+            <label class="field">
+              <span class="field-label">Type</span>
+              <select id="apparatusAdderType"></select>
+            </label>
+            <label class="field">
+              <span class="field-label">Notes (optional)</span>
+              <input type="text" id="apparatusAdderNotes" placeholder="Ready reserve" />
+            </label>
+            <label class="field">
+              <span class="field-label">Home Station</span>
+              <select id="apparatusAdderHome"></select>
+            </label>
+            <label class="field">
+              <span class="field-label">Current Station</span>
+              <select id="apparatusAdderStation"></select>
+            </label>
+          </div>
+          <div class="row-actions">
             <button id="apparatusAdderConfirm" type="button">Save Apparatus</button>
             <button id="apparatusAdderCancel" class="secondary" type="button">Cancel</button>
           </div>

@@ -176,9 +176,8 @@
 
     .row {
       display: flex;
-      flex-wrap: wrap;
       gap: 0.75rem;
-      align-items: flex-start;
+      align-items: stretch;
       margin-bottom: 0.75rem;
       padding: 0.75rem;
       border-radius: 10px;
@@ -186,9 +185,27 @@
       background: #f7f9fc;
     }
 
-    .row > button {
+    .row-body {
+      display: flex;
+      flex: 1 1 auto;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .row-body.column {
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .row-actions {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
       flex: 0 0 auto;
-      align-self: flex-end;
+    }
+
+    .row-actions button {
+      min-width: 96px;
     }
 
     .row input,
@@ -203,6 +220,10 @@
       gap: 0.2rem;
       flex: 1 1 160px;
       min-width: 0;
+    }
+
+    .row-body.column .field {
+      flex: 0 0 auto;
     }
 
     .field-label {
@@ -223,8 +244,52 @@
 
     input, select, textarea {
       width: 100%;
-      margin-bottom: 0.5rem;
+      margin: 0;
+      box-sizing: border-box;
+      font-size: 1rem;
     }
+
+    .row input,
+    .row select {
+      box-sizing: border-box;
+      height: 36px !important;
+      min-height: 36px !important;
+      max-height: 36px !important;
+      padding: 6px 10px !important;
+      line-height: 22px !important;
+    }
+
+    .modal-content input[type="text"],
+    .modal-content input[type="number"],
+    .modal-content input[type="tel"],
+    .modal-content input[type="search"],
+    .modal-content select {
+      border: 1px solid #bcd0eb;
+      border-radius: 6px;
+      background: #fff;
+      display: inline-flex;
+      align-items: center;
+      appearance: none;
+      -moz-appearance: none;
+      -webkit-appearance: none;
+    }
+
+    .modal-content select {
+      background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%233c5780' stroke-width='1.3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.45rem center;
+      background-size: 10px 6px;
+      padding-right: 1.6rem;
+    }
+
+    .modal-content textarea {
+      padding: 0.45rem 0.55rem;
+      min-height: 3.25rem;
+      border: 1px solid #bcd0eb;
+      border-radius: 6px;
+      resize: vertical;
+    }
+
 
     button {
       background: #0f83ff;
@@ -295,19 +360,6 @@
     .add-row input,
     .add-row select {
       background: #fff;
-    }
-
-    .order-tag {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      color: #4a6278;
-      background: #e2ecfb;
-      border-radius: 999px;
-      padding: 0.35rem 0.75rem;
-      min-width: 3rem;
-      flex: 0 0 auto;
     }
 
     @media (max-width: 720px) {
@@ -489,7 +541,7 @@
 
   let bodyScrollLockCount = 0;
   let previousBodyOverflow = "";
-  let currentAdminTab = "stations";
+  const DEFAULT_ADMIN_TAB = "stations";
   let lastAddedStationId = null;
   let lastAddedApparatusNumber = null;
 
@@ -553,7 +605,6 @@
   });
 
   function switchTab(tabId) {
-    currentAdminTab = tabId;
     document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
     document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("active"));
     const tabButton = document.querySelector(`.tab[onclick*="${tabId}"]`);
@@ -1076,9 +1127,8 @@
         const row = document.createElement("div");
         row.className = "row";
 
-        const orderLabel = document.createElement("span");
-        orderLabel.className = "order-tag";
-        orderLabel.textContent = `#${index + 1}`;
+      const body = document.createElement("div");
+      body.className = "row-body column";
 
         const nameInput = document.createElement("input");
         nameInput.value = station.name;
@@ -1090,6 +1140,8 @@
           renderDashboard();
         };
         const nameField = buildField("Name", nameInput);
+
+      body.appendChild(nameField);
 
         const del = document.createElement("button");
         del.textContent = "Delete";
@@ -1108,9 +1160,12 @@
           renderDashboard();
         };
 
-        row.appendChild(orderLabel);
-        row.appendChild(nameField);
-        row.appendChild(del);
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        actions.appendChild(del);
+
+        row.appendChild(body);
+        row.appendChild(actions);
         stationListEl.appendChild(row);
 
         if (lastAddedStationId === station.stationId) {
@@ -1129,6 +1184,9 @@
         const row = document.createElement("div");
         row.className = "row";
 
+        const rowContent = document.createElement("div");
+        rowContent.className = "row-body";
+
         const numberInput = document.createElement("input");
         numberInput.value = app.apparatusNumber;
         numberInput.placeholder = "Number";
@@ -1138,19 +1196,20 @@
             alert("Apparatus number is required.");
             numberInput.value = app.apparatusNumber;
             return;
-          }
-          const duplicate = apparatus.some((other, otherIndex) => otherIndex !== index && other.apparatusNumber === trimmed);
-          if (duplicate) {
-            alert("Apparatus number must be unique.");
-            numberInput.value = app.apparatusNumber;
-            return;
-          }
-          app.apparatusNumber = trimmed;
-          saveApparatus(apparatus);
-          del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
-          renderDashboard();
-        };
+        }
+        const duplicate = apparatus.some((other, otherIndex) => otherIndex !== index && other.apparatusNumber === trimmed);
+        if (duplicate) {
+          alert("Apparatus number must be unique.");
+          numberInput.value = app.apparatusNumber;
+          return;
+        }
+        app.apparatusNumber = trimmed;
+        saveApparatus(apparatus);
+        del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
+        renderDashboard();
+      };
         const numberField = buildField("Number", numberInput);
+        rowContent.appendChild(numberField);
 
         const idInput = document.createElement("input");
         idInput.value = app.id || "";
@@ -1161,6 +1220,7 @@
           renderDashboard();
         };
         const idField = buildField("ID", idInput);
+        rowContent.appendChild(idField);
 
         const typeSelect = document.createElement("select");
         APPARATUS_TYPES.forEach(type => {
@@ -1176,6 +1236,7 @@
           renderDashboard();
         };
         const typeField = buildField("Type", typeSelect);
+        rowContent.appendChild(typeField);
 
         const notesInput = document.createElement("input");
         notesInput.value = app.notes || "";
@@ -1185,6 +1246,7 @@
           saveApparatus(apparatus);
         };
         const notesField = buildField("Notes", notesInput);
+        rowContent.appendChild(notesField);
 
         const homeSelect = document.createElement("select");
         populateStationSelect(homeSelect, stations, app.homeStationId, "Home: Unassigned", "Home:");
@@ -1194,6 +1256,7 @@
           renderDashboard();
         };
         const homeField = buildField("Home", homeSelect);
+        rowContent.appendChild(homeField);
 
         const stationSelect = document.createElement("select");
         populateStationSelect(stationSelect, stations, app.stationId, "Current: Unassigned", "At:");
@@ -1203,6 +1266,7 @@
           renderDashboard();
         };
         const currentField = buildField("Current", stationSelect);
+        rowContent.appendChild(currentField);
 
         const del = document.createElement("button");
         del.textContent = "Delete";
@@ -1215,13 +1279,12 @@
           renderDashboard();
         };
 
-        row.appendChild(numberField);
-        row.appendChild(idField);
-        row.appendChild(typeField);
-        row.appendChild(notesField);
-        row.appendChild(homeField);
-        row.appendChild(currentField);
-        row.appendChild(del);
+        const actions = document.createElement("div");
+        actions.className = "row-actions";
+        actions.appendChild(del);
+
+        row.appendChild(rowContent);
+        row.appendChild(actions);
         apparatusListEl.appendChild(row);
 
         if (lastAddedApparatusNumber === app.apparatusNumber) {
@@ -1241,7 +1304,7 @@
       }
     }
 
-    switchTab(currentAdminTab);
+    switchTab(DEFAULT_ADMIN_TAB);
   }
 
 

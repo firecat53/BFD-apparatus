@@ -265,6 +265,43 @@
       flex: 0 0 auto;
     }
 
+    .edit-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    #editModal .edit-fields .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      margin-bottom: 0.5rem;
+      flex: none;
+    }
+
+    #editModal .edit-fields .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .checkbox-field {
+      flex-direction: row !important;
+      align-items: center;
+      gap: 0.5rem !important;
+    }
+
+    .checkbox-field input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
+    .checkbox-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #0f3460;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
     .field-label {
       font-size: 0.7rem;
       font-weight: 600;
@@ -444,20 +481,37 @@
 <!-- Apparatus Edit Modal -->
   <div id="editModal">
     <div class="modal-content">
-      <h3 id="editModalTitle">Edit Apparatus</h3>
-      <label>ID:</label>
-      <input type="text" id="editId" />
-      <label>Apparatus Type:</label>
-      <select id="editType"></select>
-      <label>Home Station:</label>
-      <select id="editHomeStation"></select>
-      <label>Current Station:</label>
-      <select id="editStation"></select>
-      <label>Notes:</label>
-      <textarea id="editNotes" rows="3"></textarea>
-      <br>
-      <button onclick="saveApparatusEdit()">Save</button>
-      <button class="secondary" onclick="closeEditModal()">Cancel</button>
+      <h3 id="editModalTitle" style="margin: 0 0 1rem; font-size: 1.25rem; color: #0f3460;">Edit Apparatus</h3>
+      <div class="edit-fields">
+        <label class="field">
+          <span class="field-label">ID</span>
+          <input type="text" id="editId" />
+        </label>
+        <label class="field">
+          <span class="field-label">Apparatus Type</span>
+          <select id="editType"></select>
+        </label>
+        <label class="field checkbox-field">
+          <input type="checkbox" id="editReserve" />
+          <span class="checkbox-label">Reserve</span>
+        </label>
+        <label class="field">
+          <span class="field-label">Home Station</span>
+          <select id="editHomeStation"></select>
+        </label>
+        <label class="field">
+          <span class="field-label">Current Station</span>
+          <select id="editStation"></select>
+        </label>
+        <label class="field">
+          <span class="field-label">Notes</span>
+          <textarea id="editNotes" rows="3"></textarea>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button onclick="saveApparatusEdit()">Save</button>
+        <button class="secondary" onclick="closeEditModal()">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -511,6 +565,10 @@
             <label class="field">
               <span class="field-label">Type</span>
               <select id="apparatusAdderType"></select>
+            </label>
+            <label class="field checkbox-field">
+              <input type="checkbox" id="apparatusAdderReserve" />
+              <span class="checkbox-label">Reserve</span>
             </label>
             <label class="field">
               <span class="field-label">Notes (optional)</span>
@@ -575,6 +633,7 @@
   const editModalTitle = document.getElementById("editModalTitle");
   const editIdInput = document.getElementById("editId");
   const editTypeSelect = document.getElementById("editType");
+  const editReserveCheckbox = document.getElementById("editReserve");
   const editHomeSelect = document.getElementById("editHomeStation");
   const editStationSelect = document.getElementById("editStation");
   const editNotesInput = document.getElementById("editNotes");
@@ -589,6 +648,7 @@
   const apparatusAdderNumberInput = document.getElementById("apparatusAdderNumber");
   const apparatusAdderIdInput = document.getElementById("apparatusAdderId");
   const apparatusAdderTypeSelect = document.getElementById("apparatusAdderType");
+  const apparatusAdderReserveCheckbox = document.getElementById("apparatusAdderReserve");
   const apparatusAdderNotesInput = document.getElementById("apparatusAdderNotes");
   const apparatusAdderHomeSelect = document.getElementById("apparatusAdderHome");
   const apparatusAdderStationSelect = document.getElementById("apparatusAdderStation");
@@ -769,6 +829,11 @@
         delete next.color;
         dirty = true;
       }
+      // Migrate old reserve logic: if no ID, set reserve to true
+      if (typeof next.reserve !== "boolean") {
+        next.reserve = !next.id;
+        dirty = true;
+      }
       return next;
     });
     return { apparatus: migrated, dirty };
@@ -929,6 +994,7 @@
     }
     if (apparatusAdderNumberInput) apparatusAdderNumberInput.value = "";
     if (apparatusAdderIdInput) apparatusAdderIdInput.value = "";
+    if (apparatusAdderReserveCheckbox) apparatusAdderReserveCheckbox.checked = false;
     if (apparatusAdderNotesInput) apparatusAdderNotesInput.value = "";
   }
 
@@ -944,6 +1010,7 @@
 
     const idValue = apparatusAdderIdInput ? apparatusAdderIdInput.value.trim() : "";
     const typeValue = apparatusAdderTypeSelect ? apparatusAdderTypeSelect.value : DEFAULT_TYPE;
+    const reserveValue = apparatusAdderReserveCheckbox ? apparatusAdderReserveCheckbox.checked : false;
     const notesValue = apparatusAdderNotesInput ? apparatusAdderNotesInput.value.trim() : "";
     const homeStationValue = apparatusAdderHomeSelect ? apparatusAdderHomeSelect.value : "";
     const stationValue = apparatusAdderStationSelect
@@ -965,6 +1032,7 @@
         apparatusNumber: number,
         id: idValue,
         apparatusType: typeValue || DEFAULT_TYPE,
+        reserve: reserveValue,
         notes: notesValue,
         homeStationId: homeStationValue,
         stationId: stationValue
@@ -1088,7 +1156,12 @@
           if (draggingApparatus) {
             const updated = apparatus.map(app => {
               if (app.apparatusNumber === draggingApparatus) {
-                return { ...app, stationId: station.stationId };
+                const updatedApp = { ...app, stationId: station.stationId };
+                // If reserve apparatus is moved to home station, clear the ID
+                if (updatedApp.reserve && updatedApp.homeStationId === station.stationId) {
+                  updatedApp.id = "";
+                }
+                return updatedApp;
               }
               return app;
             });
@@ -1118,8 +1191,8 @@
       const sortedStationApparatus = stationApparatusIndexed
         .slice()
         .sort((a, b) => {
-          const aReserve = !a.app.id;
-          const bReserve = !b.app.id;
+          const aReserve = a.app.reserve;
+          const bReserve = b.app.reserve;
           if (aReserve && !bReserve) return 1;
           if (!aReserve && bReserve) return -1;
           if (aReserve && bReserve) {
@@ -1149,7 +1222,7 @@
           box.removeAttribute("draggable");
         }
 
-        if (!app.id) {
+        if (app.reserve) {
           box.classList.add("reserve");
         }
 
@@ -1178,7 +1251,7 @@
         const colorClass = getColorClass(app.apparatusType);
         ghost.className = `apparatus ghost ${colorClass}`;
         ghost.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
-        if (!app.id) {
+        if (app.reserve) {
           ghost.classList.add("reserve");
         }
         body.appendChild(ghost);
@@ -1199,12 +1272,29 @@
     if (editIdInput) {
       editIdInput.value = app.id || "";
     }
+    if (editReserveCheckbox) {
+      editReserveCheckbox.checked = app.reserve || false;
+    }
     if (editNotesInput) {
       editNotesInput.value = app.notes || "";
     }
     populateTypeSelect(editTypeSelect, app.apparatusType);
     populateStationSelect(editHomeSelect, stations, app.homeStationId || "", "Unassigned");
     populateStationSelect(editStationSelect, stations, app.stationId || "", "Unassigned");
+
+    // Add change handler to Current Station dropdown to clear ID when reserve apparatus returns home
+    if (editStationSelect) {
+      editStationSelect.onchange = () => {
+        // If reserve apparatus is moved to home station, clear the ID
+        if (editReserveCheckbox && editReserveCheckbox.checked &&
+            editHomeSelect && editStationSelect.value === editHomeSelect.value) {
+          if (editIdInput) {
+            editIdInput.value = "";
+          }
+        }
+      };
+    }
+
     if (editModalEl) {
       const wasHidden = editModalEl.style.display !== "block";
       editModalEl.style.display = "block";
@@ -1242,6 +1332,7 @@
   function saveApparatusEdit() {
     const id = editIdInput ? editIdInput.value.trim() : "";
     const apparatusType = editTypeSelect ? editTypeSelect.value : DEFAULT_TYPE;
+    const reserve = editReserveCheckbox ? editReserveCheckbox.checked : false;
     const homeStationId = editHomeSelect ? editHomeSelect.value : "";
     const stationId = editStationSelect ? editStationSelect.value : "";
     const notes = editNotesInput ? editNotesInput.value.trim() : "";
@@ -1253,6 +1344,7 @@
           ...app,
           id,
           apparatusType,
+          reserve,
           homeStationId: homeStationId || "",
           stationId: stationId || "",
           notes
@@ -1403,6 +1495,23 @@
         const typeField = buildField("Type", typeSelect);
         rowContent.appendChild(typeField);
 
+        const reserveCheckbox = document.createElement("input");
+        reserveCheckbox.type = "checkbox";
+        reserveCheckbox.checked = app.reserve || false;
+        reserveCheckbox.onchange = () => {
+          app.reserve = reserveCheckbox.checked;
+          saveApparatus(apparatus);
+          renderDashboard();
+        };
+        const reserveLabel = document.createElement("label");
+        reserveLabel.className = "field checkbox-field";
+        reserveLabel.appendChild(reserveCheckbox);
+        const reserveText = document.createElement("span");
+        reserveText.className = "checkbox-label";
+        reserveText.textContent = "Reserve";
+        reserveLabel.appendChild(reserveText);
+        rowContent.appendChild(reserveLabel);
+
         const notesInput = document.createElement("input");
         notesInput.value = app.notes || "";
         notesInput.placeholder = "Notes (optional)";
@@ -1427,6 +1536,11 @@
         populateStationSelect(stationSelect, stations, app.stationId, "Current: Unassigned", "At:");
         stationSelect.onchange = () => {
           app.stationId = stationSelect.value;
+          // If reserve apparatus is moved to home station, clear the ID
+          if (app.reserve && app.homeStationId === stationSelect.value) {
+            app.id = "";
+            idInput.value = "";
+          }
           saveApparatus(apparatus);
           renderDashboard();
         };

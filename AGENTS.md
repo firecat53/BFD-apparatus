@@ -36,3 +36,4 @@ This dashboard is a static SPA for managing fire department apparatus. Use this 
 - Desktop drag/drop handles apparatus moves and station reordering; positions persist via `order`.
 - Touch users tap an apparatus to pick a destination; ghosts remain at home stations.
 - Admin tabs manage dozens of records with type-aware colors and duplicate-number checks.
+- Data tab provides JSON export/import for backing up or restoring `stations` and `apparatus` records.

@@ -208,6 +208,43 @@
       min-width: 96px;
     }
 
+    .data-actions {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .data-note {
+      color: #4a6278;
+      font-size: 0.85rem;
+    }
+
+    .import-label {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 0.85rem;
+      font-weight: 600;
+      border-radius: 6px;
+      background: #1f2933;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .import-label:hover {
+      box-shadow: 0 4px 12px rgba(31, 41, 51, 0.3);
+    }
+
+    .import-label input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
     .row input,
     .row select {
       flex: 1 1 auto;
@@ -428,6 +465,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab('stations')">Stations</button>
         <button class="tab" onclick="switchTab('apparatus')">Apparatus</button>
+        <button class="tab" onclick="switchTab('data')">Data</button>
       </div>
 
       <div id="stations" class="tab-content active">
@@ -493,6 +531,21 @@
           <button class="secondary" type="button" onclick="closeAdminModal()">Exit</button>
         </div>
       </div>
+
+      <div id="data" class="tab-content">
+        <div class="tab-header">
+          <h2>Data</h2>
+          <p>Export or import station and apparatus data for backups or transfers.</p>
+        </div>
+        <div class="data-actions">
+          <button id="backupButton" type="button">Export JSON</button>
+          <label class="import-label">
+            <input id="importInput" type="file" accept="application/json" />
+            <span>Import JSON</span>
+          </label>
+        </div>
+        <p class="data-note">Export creates a JSON file containing both stations and apparatus arrays. Import replaces existing data with the uploaded backup.</p>
+      </div>
     </div>
   </div>
 <script>
@@ -538,6 +591,8 @@
   const apparatusAdderConfirmBtn = document.getElementById("apparatusAdderConfirm");
   const apparatusAdderCancelBtn = document.getElementById("apparatusAdderCancel");
   const apparatusShowAdderBtn = document.getElementById("apparatusShowAdder");
+  const backupButton = document.getElementById("backupButton");
+  const importInput = document.getElementById("importInput");
 
   let bodyScrollLockCount = 0;
   let previousBodyOverflow = "";
@@ -579,6 +634,14 @@
   }
   if (apparatusAdderConfirmBtn) {
     apparatusAdderConfirmBtn.addEventListener("click", confirmAddApparatus);
+  }
+
+  if (backupButton) {
+    backupButton.addEventListener("click", exportDataBackup);
+  }
+
+  if (importInput) {
+    importInput.addEventListener("change", handleDataImport);
   }
 
   [adminModalEl, editModalEl].forEach(modal => {
@@ -890,6 +953,61 @@
     hideApparatusAdder();
     openAdminModal();
     renderDashboard();
+  }
+
+  function exportDataBackup() {
+    const data = loadData();
+    const payload = {
+      stations: data.stations,
+      apparatus: data.apparatus,
+      exportedAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `apparatus-backup-${stamp}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  function handleDataImport(event) {
+    const input = event.target;
+    const file = input.files && input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const text = e.target?.result;
+        const parsed = JSON.parse(text);
+        if (!parsed || !Array.isArray(parsed.stations) || !Array.isArray(parsed.apparatus)) {
+          alert("Invalid backup file. Expected stations and apparatus arrays.");
+          return;
+        }
+        localStorage.setItem(STATION_KEY, JSON.stringify(parsed.stations));
+        localStorage.setItem(APPARATUS_KEY, JSON.stringify(parsed.apparatus));
+        lastAddedStationId = null;
+        lastAddedApparatusNumber = null;
+        openAdminModal();
+        renderDashboard();
+        alert("Import complete. Data has been replaced with the backup file.");
+      } catch (err) {
+        console.error(err);
+        alert("Unable to import backup. Please verify the JSON file and try again.");
+      } finally {
+        input.value = "";
+      }
+    };
+    reader.onerror = () => {
+      alert("Failed to read file. Please try again.");
+      input.value = "";
+    };
+    reader.readAsText(file);
   }
 
   function closeAdminModal() {

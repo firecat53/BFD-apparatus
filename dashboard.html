@@ -1471,9 +1471,22 @@
       if (wasHidden) {
         lockBodyScroll();
       }
+      // Reset scroll position on the modal content
+      const modalContent = adminModalEl.querySelector(".modal-content");
+      if (modalContent) {
+        modalContent.scrollTop = 0;
+      }
     }
 
     switchTab(DEFAULT_ADMIN_TAB);
+
+    // Reset scroll position to top of scrollable lists
+    if (stationListEl) {
+      stationListEl.scrollTop = 0;
+    }
+    if (apparatusListEl) {
+      apparatusListEl.scrollTop = 0;
+    }
   }
 
 

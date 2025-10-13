@@ -611,6 +611,13 @@
     </div>
   </div>
 <script>
+  // PocketBase Configuration
+  const PB_URL = (window.location.hostname === 'localhost' ||
+                  window.location.hostname === '127.0.0.1' ||
+                  window.location.protocol === 'file:')
+    ? 'http://127.0.0.1:8090'
+    : 'https://your-domain.com'; // Update for production
+
   const STATION_KEY = "stations";
   const APPARATUS_KEY = "apparatus";
   const TYPE_TO_CLASS = {
@@ -758,6 +765,115 @@
     if (targetContent) targetContent.classList.add("active");
   }
 
+  // ========== PocketBase API Functions ==========
+
+  async function apiRequest(endpoint, options = {}) {
+    const response = await fetch(`${PB_URL}/api/collections/${endpoint}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`API Error (${response.status}): ${errorText}`);
+    }
+    return response.json();
+  }
+
+  // Station API
+  async function loadStationsFromPB() {
+    const result = await apiRequest('stations/records?sort=+order&perPage=500');
+    return result.items.map(item => ({
+      stationId: item.stationId,
+      name: item.name,
+      order: item.order,
+      _pbId: item.id // Store PB record ID for updates
+    }));
+  }
+
+  async function saveStationToPB(station) {
+    const payload = {
+      stationId: station.stationId,
+      name: station.name,
+      order: station.order
+    };
+
+    if (station._pbId) {
+      // Update existing record
+      const result = await apiRequest(`stations/records/${station._pbId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+      return { ...station, _pbId: result.id };
+    } else {
+      // Create new record
+      const result = await apiRequest('stations/records', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      return { ...station, _pbId: result.id };
+    }
+  }
+
+  async function deleteStationFromPB(station) {
+    if (station._pbId) {
+      await apiRequest(`stations/records/${station._pbId}`, { method: 'DELETE' });
+    }
+  }
+
+  // Apparatus API
+  async function loadApparatusFromPB() {
+    const result = await apiRequest('apparatus/records?perPage=500');
+    return result.items.map(item => ({
+      apparatusNumber: item.apparatusNumber,
+      id: item.apparatusId || "",
+      apparatusType: item.apparatusType,
+      reserve: item.reserve || false,
+      notes: item.notes || "",
+      homeStationId: item.homeStationId || "",
+      stationId: item.stationId || "",
+      _pbId: item.id // Store PB record ID for updates
+    }));
+  }
+
+  async function saveApparatusToPB(apparatus) {
+    const payload = {
+      apparatusNumber: apparatus.apparatusNumber,
+      apparatusId: apparatus.id || "",
+      apparatusType: apparatus.apparatusType,
+      reserve: apparatus.reserve || false,
+      notes: apparatus.notes || "",
+      homeStationId: apparatus.homeStationId || "",
+      stationId: apparatus.stationId || ""
+    };
+
+    if (apparatus._pbId) {
+      // Update existing record
+      const result = await apiRequest(`apparatus/records/${apparatus._pbId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(payload)
+      });
+      return { ...apparatus, _pbId: result.id };
+    } else {
+      // Create new record
+      const result = await apiRequest('apparatus/records', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      return { ...apparatus, _pbId: result.id };
+    }
+  }
+
+  async function deleteApparatusFromPB(apparatus) {
+    if (apparatus._pbId) {
+      await apiRequest(`apparatus/records/${apparatus._pbId}`, { method: 'DELETE' });
+    }
+  }
+
+  // ========== End PocketBase API Functions ==========
+
   function ensureLocalStorage() {
     if (!localStorage.getItem(STATION_KEY)) {
       localStorage.setItem(STATION_KEY, JSON.stringify([]));
@@ -839,33 +955,42 @@
     return { apparatus: migrated, dirty };
   }
 
-  function loadData() {
-    ensureLocalStorage();
-    let stations = JSON.parse(localStorage.getItem(STATION_KEY));
-    let apparatus = JSON.parse(localStorage.getItem(APPARATUS_KEY));
+  async function loadData() {
+    try {
+      const [stations, apparatus] = await Promise.all([
+        loadStationsFromPB(),
+        loadApparatusFromPB()
+      ]);
 
-    const stationMigration = migrateStations(stations);
-    stations = stationMigration.stations.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      // Sort stations by order
+      stations.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
-    const apparatusMigration = migrateApparatus(apparatus);
-    apparatus = apparatusMigration.apparatus;
-
-    if (stationMigration.dirty) {
-      saveStations(stations);
+      return { stations, apparatus };
+    } catch (error) {
+      console.error('Failed to load data from PocketBase:', error);
+      alert('Failed to load data from server. Please check your connection and refresh the page.');
+      return { stations: [], apparatus: [] };
     }
-    if (apparatusMigration.dirty) {
-      saveApparatus(apparatus);
-    }
-
-    return { stations, apparatus };
   }
 
-  function saveStations(stations) {
-    localStorage.setItem(STATION_KEY, JSON.stringify(stations));
+  async function saveStations(stations) {
+    try {
+      await Promise.all(stations.map(station => saveStationToPB(station)));
+    } catch (error) {
+      console.error('Failed to save stations:', error);
+      alert('Failed to save stations. Please check your connection and try again.');
+      throw error;
+    }
   }
 
-  function saveApparatus(apparatus) {
-    localStorage.setItem(APPARATUS_KEY, JSON.stringify(apparatus));
+  async function saveApparatus(apparatus) {
+    try {
+      await Promise.all(apparatus.map(app => saveApparatusToPB(app)));
+    } catch (error) {
+      console.error('Failed to save apparatus:', error);
+      alert('Failed to save apparatus. Please check your connection and try again.');
+      throw error;
+    }
   }
 
   function getColorClass(apparatusType) {
@@ -918,9 +1043,9 @@
     return wrapper;
   }
 
-  function showStationAdder() {
+  async function showStationAdder() {
     if (!stationAdderRow || !stationShowAdderBtn) return;
-    const { stations } = loadData();
+    const { stations } = await loadData();
     stationAdderRow.classList.remove("hidden");
     stationShowAdderBtn.disabled = true;
     if (stationAdderNameInput) {
@@ -942,7 +1067,7 @@
     }
   }
 
-  function confirmAddStation() {
+  async function confirmAddStation() {
     const name = stationAdderNameInput ? stationAdderNameInput.value.trim() : "";
     if (!name) {
       alert("Please provide a station name.");
@@ -952,20 +1077,20 @@
       return;
     }
 
-    const { stations } = loadData();
+    const { stations } = await loadData();
     const id = "s" + Math.floor(Math.random() * 100000);
     const order = stations.length;
     const updated = [...stations, { stationId: id, name, order }];
-    saveStations(updated);
+    await saveStations(updated);
     lastAddedStationId = id;
     hideStationAdder();
-    openAdminModal();
-    renderDashboard();
+    await openAdminModal();
+    await renderDashboard();
   }
 
-  function showApparatusAdder() {
+  async function showApparatusAdder() {
     if (!apparatusAdderRow || !apparatusShowAdderBtn) return;
-    const { stations } = loadData();
+    const { stations } = await loadData();
     apparatusAdderRow.classList.remove("hidden");
     apparatusShowAdderBtn.disabled = true;
     populateTypeSelect(apparatusAdderTypeSelect, DEFAULT_TYPE);
@@ -998,7 +1123,7 @@
     if (apparatusAdderNotesInput) apparatusAdderNotesInput.value = "";
   }
 
-  function confirmAddApparatus() {
+  async function confirmAddApparatus() {
     const number = apparatusAdderNumberInput ? apparatusAdderNumberInput.value.trim() : "";
     if (!number) {
       alert("Apparatus number is required.");
@@ -1017,7 +1142,7 @@
       ? apparatusAdderStationSelect.value || homeStationValue
       : homeStationValue;
 
-    const { apparatus } = loadData();
+    const { apparatus } = await loadData();
     if (apparatus.some(a => a.apparatusNumber === number)) {
       alert("Apparatus number must be unique.");
       if (apparatusAdderNumberInput) {
@@ -1038,15 +1163,15 @@
         stationId: stationValue
       }
     ];
-    saveApparatus(updated);
+    await saveApparatus(updated);
     lastAddedApparatusNumber = number;
     hideApparatusAdder();
-    openAdminModal();
-    renderDashboard();
+    await openAdminModal();
+    await renderDashboard();
   }
 
-  function exportDataBackup() {
-    const data = loadData();
+  async function exportDataBackup() {
+    const data = await loadData();
     const payload = {
       stations: data.stations,
       apparatus: data.apparatus,
@@ -1065,7 +1190,7 @@
     URL.revokeObjectURL(url);
   }
 
-  function handleDataImport(event) {
+  async function handleDataImport(event) {
     const input = event.target;
     const file = input.files && input.files[0];
     if (!file) return;
@@ -1076,7 +1201,7 @@
     }
 
     const reader = new FileReader();
-    reader.onload = e => {
+    reader.onload = async (e) => {
       try {
         const text = e.target?.result;
         const parsed = JSON.parse(text);
@@ -1084,12 +1209,15 @@
           alert("Invalid backup file. Expected stations and apparatus arrays.");
           return;
         }
-        localStorage.setItem(STATION_KEY, JSON.stringify(parsed.stations));
-        localStorage.setItem(APPARATUS_KEY, JSON.stringify(parsed.apparatus));
+
+        // Import to PocketBase
+        await saveStations(parsed.stations);
+        await saveApparatus(parsed.apparatus);
+
         lastAddedStationId = null;
         lastAddedApparatusNumber = null;
-        openAdminModal();
-        renderDashboard();
+        await openAdminModal();
+        await renderDashboard();
         alert("Import complete. Data has been replaced with the backup file.");
       } catch (err) {
         console.error(err);
@@ -1114,8 +1242,8 @@
     }
   }
 
-  function renderDashboard() {
-    const { stations, apparatus } = loadData();
+  async function renderDashboard() {
+    const { stations, apparatus } = await loadData();
     const grid = document.getElementById("stationGrid");
     grid.innerHTML = "";
 
@@ -1151,7 +1279,7 @@
           }
         });
 
-        card.addEventListener("drop", e => {
+        card.addEventListener("drop", async (e) => {
           e.preventDefault();
           if (draggingApparatus) {
             const updated = apparatus.map(app => {
@@ -1166,8 +1294,8 @@
               return app;
             });
             draggingApparatus = null;
-            saveApparatus(updated);
-            renderDashboard();
+            await saveApparatus(updated);
+            await renderDashboard();
           } else if (draggingStation && draggingStation !== station.stationId) {
             const reordered = [...stations];
             const fromIndex = reordered.findIndex(s => s.stationId === draggingStation);
@@ -1177,8 +1305,8 @@
               if (targetIndex > -1) {
                 reordered.splice(targetIndex, 0, moved);
                 const tagged = reordered.map((s, index) => ({ ...s, order: index }));
-                saveStations(tagged);
-                renderDashboard();
+                await saveStations(tagged);
+                await renderDashboard();
               }
             }
             draggingStation = null;
@@ -1263,8 +1391,8 @@
     });
   }
 
-  function openEditModal(app) {
-    const { stations } = loadData();
+  async function openEditModal(app) {
+    const { stations } = await loadData();
     editingNumber = app.apparatusNumber;
     if (editModalTitle) {
       editModalTitle.textContent = app.apparatusNumber ? `Edit ${app.apparatusNumber}` : "Edit Apparatus";
@@ -1329,7 +1457,7 @@
     }
   }
 
-  function saveApparatusEdit() {
+  async function saveApparatusEdit() {
     const id = editIdInput ? editIdInput.value.trim() : "";
     const apparatusType = editTypeSelect ? editTypeSelect.value : DEFAULT_TYPE;
     const reserve = editReserveCheckbox ? editReserveCheckbox.checked : false;
@@ -1337,7 +1465,7 @@
     const stationId = editStationSelect ? editStationSelect.value : "";
     const notes = editNotesInput ? editNotesInput.value.trim() : "";
 
-    const { apparatus } = loadData();
+    const { apparatus } = await loadData();
     const updated = apparatus.map(app => {
       if (app.apparatusNumber === editingNumber) {
         return {
@@ -1353,14 +1481,14 @@
       return app;
     });
 
-    saveApparatus(updated);
+    await saveApparatus(updated);
     closeEditModal();
-    renderDashboard();
+    await renderDashboard();
   }
 
-  function openAdminModal() {
+  async function openAdminModal() {
     const wasHidden = !adminModalEl || adminModalEl.style.display !== "block";
-    const { stations, apparatus } = loadData();
+    const { stations, apparatus } = await loadData();
 
     hideStationAdder();
     hideApparatusAdder();
@@ -1387,11 +1515,11 @@
         const nameInput = document.createElement("input");
         nameInput.value = station.name;
         nameInput.placeholder = "Station name";
-        nameInput.onchange = () => {
+        nameInput.onchange = async () => {
           station.name = nameInput.value;
-          saveStations(stations);
+          await saveStations(stations);
           del.setAttribute("aria-label", `Delete ${station.name}`);
-          renderDashboard();
+          await renderDashboard();
         };
         const nameField = buildField("Name", nameInput);
 
@@ -1401,7 +1529,7 @@
         del.textContent = "Delete";
         del.classList.add("danger");
         del.setAttribute("aria-label", `Delete ${station.name}`);
-        del.onclick = () => {
+        del.onclick = async () => {
           const hasApparatus = apparatus.some(app => app.stationId === station.stationId || app.homeStationId === station.stationId);
           if (hasApparatus) {
             alert("Cannot delete station with assigned apparatus.");
@@ -1410,11 +1538,12 @@
           if (!confirm(`Are you sure you want to delete ${station.name}?`)) {
             return;
           }
+          await deleteStationFromPB(station);
           stations.splice(index, 1);
           const reordered = stations.map((s, idx) => ({ ...s, order: idx }));
-          saveStations(reordered);
-          openAdminModal();
-          renderDashboard();
+          await saveStations(reordered);
+          await openAdminModal();
+          await renderDashboard();
         };
 
         const actions = document.createElement("div");
@@ -1447,7 +1576,7 @@
         const numberInput = document.createElement("input");
         numberInput.value = app.apparatusNumber;
         numberInput.placeholder = "Number";
-        numberInput.onchange = () => {
+        numberInput.onchange = async () => {
           const trimmed = numberInput.value.trim();
           if (!trimmed) {
             alert("Apparatus number is required.");
@@ -1461,9 +1590,9 @@
           return;
         }
         app.apparatusNumber = trimmed;
-        saveApparatus(apparatus);
+        await saveApparatus(apparatus);
         del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
-        renderDashboard();
+        await renderDashboard();
       };
         const numberField = buildField("Number", numberInput);
         rowContent.appendChild(numberField);
@@ -1471,10 +1600,10 @@
         const idInput = document.createElement("input");
         idInput.value = app.id || "";
         idInput.placeholder = "ID (optional)";
-        idInput.onchange = () => {
+        idInput.onchange = async () => {
           app.id = idInput.value.trim();
-          saveApparatus(apparatus);
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await renderDashboard();
         };
         const idField = buildField("ID", idInput);
         rowContent.appendChild(idField);
@@ -1487,10 +1616,10 @@
           if (app.apparatusType === type) opt.selected = true;
           typeSelect.appendChild(opt);
         });
-        typeSelect.onchange = () => {
+        typeSelect.onchange = async () => {
           app.apparatusType = typeSelect.value;
-          saveApparatus(apparatus);
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await renderDashboard();
         };
         const typeField = buildField("Type", typeSelect);
         rowContent.appendChild(typeField);
@@ -1498,10 +1627,10 @@
         const reserveCheckbox = document.createElement("input");
         reserveCheckbox.type = "checkbox";
         reserveCheckbox.checked = app.reserve || false;
-        reserveCheckbox.onchange = () => {
+        reserveCheckbox.onchange = async () => {
           app.reserve = reserveCheckbox.checked;
-          saveApparatus(apparatus);
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await renderDashboard();
         };
         const reserveLabel = document.createElement("label");
         reserveLabel.className = "field checkbox-field";
@@ -1515,34 +1644,34 @@
         const notesInput = document.createElement("input");
         notesInput.value = app.notes || "";
         notesInput.placeholder = "Notes (optional)";
-        notesInput.onchange = () => {
+        notesInput.onchange = async () => {
           app.notes = notesInput.value;
-          saveApparatus(apparatus);
+          await saveApparatus(apparatus);
         };
         const notesField = buildField("Notes", notesInput);
         rowContent.appendChild(notesField);
 
         const homeSelect = document.createElement("select");
         populateStationSelect(homeSelect, stations, app.homeStationId, "Home: Unassigned", "Home:");
-        homeSelect.onchange = () => {
+        homeSelect.onchange = async () => {
           app.homeStationId = homeSelect.value;
-          saveApparatus(apparatus);
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await renderDashboard();
         };
         const homeField = buildField("Home", homeSelect);
         rowContent.appendChild(homeField);
 
         const stationSelect = document.createElement("select");
         populateStationSelect(stationSelect, stations, app.stationId, "Current: Unassigned", "At:");
-        stationSelect.onchange = () => {
+        stationSelect.onchange = async () => {
           app.stationId = stationSelect.value;
           // If reserve apparatus is moved to home station, clear the ID
           if (app.reserve && app.homeStationId === stationSelect.value) {
             app.id = "";
             idInput.value = "";
           }
-          saveApparatus(apparatus);
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await renderDashboard();
         };
         const currentField = buildField("Current", stationSelect);
         rowContent.appendChild(currentField);
@@ -1551,15 +1680,16 @@
         del.textContent = "Delete";
         del.classList.add("danger");
         del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
-        del.onclick = () => {
+        del.onclick = async () => {
           const displayName = app.id ? `${app.id} (${app.apparatusNumber})` : app.apparatusNumber;
           if (!confirm(`Are you sure you want to delete apparatus ${displayName}?`)) {
             return;
           }
+          await deleteApparatusFromPB(app);
           apparatus.splice(index, 1);
-          saveApparatus(apparatus);
-          openAdminModal();
-          renderDashboard();
+          await saveApparatus(apparatus);
+          await openAdminModal();
+          await renderDashboard();
         };
 
         const actions = document.createElement("div");

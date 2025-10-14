@@ -79,7 +79,8 @@
     .yellow { background: #fbc02d !important; color: #1f1f1f !important; }
     .purple { background: #6a1b9a !important; }
     .black { background: #212121 !important; }
-    .apparatus.reserve::after {
+    .apparatus.reserve::after,
+    .selection-btn.reserve::after {
       content: "";
       position: absolute;
       inset: 0;
@@ -496,6 +497,8 @@
       transition: all 0.15s ease;
       white-space: nowrap;
       text-align: center;
+      position: relative;
+      overflow: hidden;
     }
 
     .selection-btn:hover {
@@ -530,11 +533,12 @@
 
     .edit-form {
       display: none;
+      background: linear-gradient(180deg, #ffffff 0%, #f7faff 100%);
       border: 1px solid #dbe5f3;
-      padding: 1rem;
-      border-radius: 10px;
-      background: #f7f9fc;
-      margin-bottom: 1rem;
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 14px 32px rgba(15, 40, 75, 0.18);
+      margin: 1.25rem 0;
     }
 
     .edit-form.visible {
@@ -542,23 +546,44 @@
     }
 
     .edit-form-header {
-      margin: 0 0 1rem;
-      font-size: 1.1rem;
+      margin: 0 0 1.1rem;
+      font-size: 1.3rem;
       font-weight: 600;
       color: #0f3460;
-      padding-bottom: 0.5rem;
-      border-bottom: 2px solid #007acc;
     }
 
     .edit-form-actions {
       display: flex;
       gap: 0.5rem;
-      margin-top: 1rem;
       justify-content: flex-end;
+      margin-top: 1.25rem;
     }
 
     .edit-form-actions button {
-      min-width: 100px;
+      min-width: 120px;
+    }
+
+    .edit-form .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      flex: none;
+      margin-bottom: 0.35rem;
+    }
+
+    .edit-form .field.checkbox-field {
+      flex-direction: row;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .edit-form .field.checkbox-field .checkbox-label {
+      margin: 0;
+    }
+
+    .edit-form .field:last-child {
+      margin-bottom: 0;
     }
   </style>
 </head>
@@ -607,15 +632,14 @@
   <div id="adminModal">
     <div class="modal-content">
       <div class="tabs">
-        <button class="tab active" onclick="switchTab('stations')">Stations</button>
-        <button class="tab" onclick="switchTab('apparatus')">Apparatus</button>
+        <button class="tab active" onclick="switchTab('apparatus')">Apparatus</button>
+        <button class="tab" onclick="switchTab('stations')">Stations</button>
         <button class="tab" onclick="switchTab('data')">Data</button>
       </div>
 
       <div id="stations" class="tab-content active">
         <div class="tab-header">
           <h2>Stations</h2>
-          <p>Manage station names and grid order.</p>
         </div>
         <div id="stationList"></div>
         <div id="stationAdder" class="row add-row hidden">
@@ -634,10 +658,9 @@
         </div>
       </div>
 
-      <div id="apparatus" class="tab-content">
+      <div id="apparatus" class="tab-content active">
         <div class="tab-header">
           <h2>Apparatus</h2>
-          <p>Add or update units, their types, and assignments.</p>
         </div>
         <div id="apparatusList"></div>
         <div id="apparatusAdder" class="row add-row hidden">
@@ -755,7 +778,7 @@
 
   let bodyScrollLockCount = 0;
   let previousBodyOverflow = "";
-  const DEFAULT_ADMIN_TAB = "stations";
+  const DEFAULT_ADMIN_TAB = "apparatus";
   let lastAddedStationId = null;
   let lastAddedApparatusNumber = null;
   let selectedStationForEdit = null;
@@ -1088,11 +1111,9 @@
       const option = document.createElement("option");
       option.value = type;
       option.textContent = type;
-      if (type === selectedType) {
-        option.selected = true;
-      }
       select.appendChild(option);
     });
+    select.value = selectedType;
   }
 
   function populateStationSelect(selectOrId, stations, selectedStation, placeholderLabel = "Unassigned", optionPrefix = "") {
@@ -1687,7 +1708,7 @@
 
     const header = document.createElement("h3");
     header.className = "edit-form-header";
-    header.textContent = `Edit:`;
+    header.textContent = app.apparatusNumber ? `Edit ${app.apparatusNumber}` : "Edit Apparatus";
     container.appendChild(header);
 
     const fieldsContainer = document.createElement("div");
@@ -1733,7 +1754,7 @@
         container.querySelector(".save-btn").click();
       }
     };
-    const typeField = buildField("Type", typeSelect);
+    const typeField = buildField("Apparatus Type", typeSelect);
     fieldsContainer.appendChild(typeField);
 
     // Reserve checkbox
@@ -1972,7 +1993,11 @@
       sortedApparatus.forEach(app => {
         const btn = document.createElement("button");
         const colorClass = getColorClass(app.apparatusType);
-        btn.className = `selection-btn ${colorClass}`;
+        const buttonClasses = ["selection-btn", colorClass];
+        if (app.reserve) {
+          buttonClasses.push("reserve");
+        }
+        btn.className = buttonClasses.filter(Boolean).join(" ");
         btn.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
         btn.onclick = () => {
           if (!checkDirtyAndWarn("apparatus")) return;
@@ -2011,23 +2036,13 @@
       if (lastAddedApparatusNumber) {
         const addedApparatus = apparatus.find(a => a.apparatusNumber === lastAddedApparatusNumber);
         if (addedApparatus) {
-          selectedApparatusForEdit = lastAddedApparatusNumber;
-          apparatusFormDirty = false;
-          buttonContainer.querySelectorAll(".selection-btn").forEach(b => {
-            const btnText = addedApparatus.id ? `${addedApparatus.id} ${addedApparatus.apparatusNumber}` : addedApparatus.apparatusNumber;
-            if (b.textContent === btnText) {
-              b.classList.add("selected");
-            }
-          });
-          renderApparatusEditForm(editForm, addedApparatus, apparatus, stations);
-          editForm.classList.add("visible");
-          setTimeout(() => {
-            const numberInput = editForm.querySelector("input[type='text']");
-            if (numberInput) {
-              numberInput.focus();
-              numberInput.select();
-            }
-          }, 0);
+          const btnText = addedApparatus.id ? `${addedApparatus.id} ${addedApparatus.apparatusNumber}` : addedApparatus.apparatusNumber;
+          const addedButton = Array.from(buttonContainer.querySelectorAll(".selection-btn")).find(
+            b => b.textContent === btnText
+          );
+          if (addedButton) {
+            setTimeout(() => addedButton.focus(), 0);
+          }
         }
         lastAddedApparatusNumber = null;
       } else if (selectedApparatusForEdit) {
@@ -2052,7 +2067,7 @@
       }
     }
 
-    switchTab(DEFAULT_ADMIN_TAB);
+    if (wasHidden) switchTab(DEFAULT_ADMIN_TAB);
 
     // Reset scroll position to top of scrollable lists
     if (stationListEl) {

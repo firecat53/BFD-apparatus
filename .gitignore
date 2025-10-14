@@ -1,0 +1,5 @@
+.claude/*
+auxiliary.*
+backups/*
+data.*
+types.d.ts

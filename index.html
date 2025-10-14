@@ -257,7 +257,7 @@
       display: flex;
       flex-direction: column;
       gap: 0.2rem;
-      flex: 1 1 160px;
+      flex: 0.5 0.5 50px;
       min-width: 0;
     }
 
@@ -472,6 +472,94 @@
         width: 100%;
       }
     }
+
+    .selection-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border: 1px solid #dbe5f3;
+      border-radius: 10px;
+      background: #ffffff;
+      margin-bottom: 1rem;
+      min-height: 3rem;
+    }
+
+    .selection-btn {
+      padding: 0.4rem 0.75rem;
+      border: none;
+      border-radius: 4px;
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    .selection-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .selection-btn.red {
+      background: #d32f2f;
+    }
+
+    .selection-btn.green {
+      background: #388e3c;
+    }
+
+    .selection-btn.blue {
+      background: #1976d2;
+    }
+
+    .selection-btn.yellow {
+      background: #fbc02d;
+      color: #1f1f1f;
+    }
+
+    .selection-btn.purple {
+      background: #6a1b9a;
+    }
+
+    .selection-btn.black {
+      background: #212121;
+    }
+
+    .edit-form {
+      display: none;
+      border: 1px solid #dbe5f3;
+      padding: 1rem;
+      border-radius: 10px;
+      background: #f7f9fc;
+      margin-bottom: 1rem;
+    }
+
+    .edit-form.visible {
+      display: block;
+    }
+
+    .edit-form-header {
+      margin: 0 0 1rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #0f3460;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid #007acc;
+    }
+
+    .edit-form-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      justify-content: flex-end;
+    }
+
+    .edit-form-actions button {
+      min-width: 100px;
+    }
   </style>
 </head>
 <body>
@@ -529,7 +617,7 @@
           <h2>Stations</h2>
           <p>Manage station names and grid order.</p>
         </div>
-        <div class="scrollable" id="stationList"></div>
+        <div id="stationList"></div>
         <div id="stationAdder" class="row add-row hidden">
           <label class="field">
             <span class="field-label">Station Name</span>
@@ -551,7 +639,7 @@
           <h2>Apparatus</h2>
           <p>Add or update units, their types, and assignments.</p>
         </div>
-        <div class="scrollable" id="apparatusList"></div>
+        <div id="apparatusList"></div>
         <div id="apparatusAdder" class="row add-row hidden">
           <div class="row-body column">
             <label class="field">
@@ -670,6 +758,10 @@
   const DEFAULT_ADMIN_TAB = "stations";
   let lastAddedStationId = null;
   let lastAddedApparatusNumber = null;
+  let selectedStationForEdit = null;
+  let selectedApparatusForEdit = null;
+  let stationFormDirty = false;
+  let apparatusFormDirty = false;
 
   function lockBodyScroll() {
     if (bodyScrollLockCount === 0) {
@@ -1056,6 +1148,7 @@
     if (stationShowAdderBtn) {
       stationShowAdderBtn.disabled = false;
     }
+    clearStationSelection();
   }
 
   async function confirmAddStation() {
@@ -1112,6 +1205,7 @@
     if (apparatusAdderIdInput) apparatusAdderIdInput.value = "";
     if (apparatusAdderReserveCheckbox) apparatusAdderReserveCheckbox.checked = false;
     if (apparatusAdderNotesInput) apparatusAdderNotesInput.value = "";
+    clearApparatusSelection();
   }
 
   async function confirmAddApparatus() {
@@ -1227,6 +1321,8 @@
   function closeAdminModal() {
     hideStationAdder();
     hideApparatusAdder();
+    clearStationSelection();
+    clearApparatusSelection();
     if (adminModalEl && adminModalEl.style.display === "block") {
       adminModalEl.style.display = "none";
       unlockBodyScroll();
@@ -1477,6 +1573,288 @@
     await renderDashboard();
   }
 
+  function sortStationsForSelection(stations) {
+    return [...stations].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" })
+    );
+  }
+
+  function sortApparatusForSelection(apparatus) {
+    const typeOrder = ["Fire", "Aid", "Medic", "AT", "Staff", "Utility"];
+    return [...apparatus].sort((a, b) => {
+      const typeIndexA = typeOrder.indexOf(a.apparatusType);
+      const typeIndexB = typeOrder.indexOf(b.apparatusType);
+      if (typeIndexA !== typeIndexB) {
+        return typeIndexA - typeIndexB;
+      }
+      return a.apparatusNumber.localeCompare(b.apparatusNumber, undefined, { numeric: true, sensitivity: "base" });
+    });
+  }
+
+  function checkDirtyAndWarn(tabType) {
+    if (tabType === "stations" && stationFormDirty) {
+      return confirm("You have unsaved changes to the station. Discard changes?");
+    }
+    if (tabType === "apparatus" && apparatusFormDirty) {
+      return confirm("You have unsaved changes to the apparatus. Discard changes?");
+    }
+    return true;
+  }
+
+  function clearStationSelection() {
+    selectedStationForEdit = null;
+    stationFormDirty = false;
+  }
+
+  function clearApparatusSelection() {
+    selectedApparatusForEdit = null;
+    apparatusFormDirty = false;
+  }
+
+  function renderStationEditForm(container, station, stations, apparatus) {
+    container.innerHTML = "";
+
+    const header = document.createElement("h3");
+    header.className = "edit-form-header";
+    header.textContent = `Edit: ${station.name}`;
+    container.appendChild(header);
+
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = station.name;
+    nameInput.placeholder = "Station name";
+    nameInput.oninput = () => { stationFormDirty = true; };
+    nameInput.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const nameField = buildField("Name", nameInput);
+    container.appendChild(nameField);
+
+    const actions = document.createElement("div");
+    actions.className = "edit-form-actions";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.className = "save-btn";
+    saveBtn.onclick = async () => {
+      const newName = nameInput.value.trim();
+      if (!newName) {
+        alert("Station name is required.");
+        nameInput.focus();
+        return;
+      }
+      station.name = newName;
+      await saveStations(stations);
+      stationFormDirty = false;
+      await renderDashboard();
+      await openAdminModal();
+    };
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.classList.add("danger");
+    deleteBtn.onclick = async () => {
+      const hasApparatus = apparatus.some(app => app.stationId === station.stationId || app.homeStationId === station.stationId);
+      if (hasApparatus) {
+        alert("Cannot delete station with assigned apparatus.");
+        return;
+      }
+      if (!confirm(`Are you sure you want to delete ${station.name}?`)) {
+        return;
+      }
+      await deleteStationFromPB(station);
+      const index = stations.findIndex(s => s.stationId === station.stationId);
+      if (index > -1) {
+        stations.splice(index, 1);
+      }
+      const reordered = stations.map((s, idx) => ({ ...s, order: idx }));
+      await saveStations(reordered);
+      clearStationSelection();
+      await openAdminModal();
+      await renderDashboard();
+    };
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(deleteBtn);
+    container.appendChild(actions);
+  }
+
+  function renderApparatusEditForm(container, app, apparatus, stations) {
+    container.innerHTML = "";
+
+    const header = document.createElement("h3");
+    header.className = "edit-form-header";
+    header.textContent = `Edit:`;
+    container.appendChild(header);
+
+    const fieldsContainer = document.createElement("div");
+    fieldsContainer.className = "edit-fields";
+
+    // Number field
+    const numberInput = document.createElement("input");
+    numberInput.type = "text";
+    numberInput.value = app.apparatusNumber;
+    numberInput.placeholder = "Number";
+    numberInput.oninput = () => { apparatusFormDirty = true; };
+    numberInput.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const numberField = buildField("Number", numberInput);
+    fieldsContainer.appendChild(numberField);
+
+    // ID field
+    const idInput = document.createElement("input");
+    idInput.type = "text";
+    idInput.value = app.id || "";
+    idInput.placeholder = "ID (optional)";
+    idInput.oninput = () => { apparatusFormDirty = true; };
+    idInput.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const idField = buildField("ID", idInput);
+    fieldsContainer.appendChild(idField);
+
+    // Type select
+    const typeSelect = document.createElement("select");
+    populateTypeSelect(typeSelect, app.apparatusType);
+    typeSelect.onchange = () => { apparatusFormDirty = true; };
+    typeSelect.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const typeField = buildField("Type", typeSelect);
+    fieldsContainer.appendChild(typeField);
+
+    // Reserve checkbox
+    const reserveCheckbox = document.createElement("input");
+    reserveCheckbox.type = "checkbox";
+    reserveCheckbox.id = "apparatusEditReserveCheckbox";
+    reserveCheckbox.checked = app.reserve || false;
+    reserveCheckbox.onchange = () => { apparatusFormDirty = true; };
+    const reserveLabel = document.createElement("label");
+    reserveLabel.className = "field checkbox-field";
+    reserveLabel.appendChild(reserveCheckbox);
+    const reserveText = document.createElement("span");
+    reserveText.className = "checkbox-label";
+    reserveText.textContent = "Reserve";
+    reserveLabel.appendChild(reserveText);
+    fieldsContainer.appendChild(reserveLabel);
+
+    // Notes field (textarea)
+    const notesInput = document.createElement("textarea");
+    notesInput.value = app.notes || "";
+    notesInput.placeholder = "Notes (optional)";
+    notesInput.rows = 3;
+    notesInput.oninput = () => { apparatusFormDirty = true; };
+    const notesField = buildField("Notes", notesInput);
+    fieldsContainer.appendChild(notesField);
+
+    // Home station select
+    const homeSelect = document.createElement("select");
+    populateStationSelect(homeSelect, stations, app.homeStationId, "Unassigned");
+    homeSelect.onchange = () => { apparatusFormDirty = true; };
+    homeSelect.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const homeField = buildField("Home Station", homeSelect);
+    fieldsContainer.appendChild(homeField);
+
+    // Current station select
+    const stationSelect = document.createElement("select");
+    populateStationSelect(stationSelect, stations, app.stationId, "Unassigned");
+    stationSelect.onchange = () => {
+      apparatusFormDirty = true;
+      // If reserve apparatus is moved to home station, clear the ID
+      if (reserveCheckbox.checked && stationSelect.value === homeSelect.value) {
+        idInput.value = "";
+      }
+    };
+    stationSelect.onkeydown = (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        container.querySelector(".save-btn").click();
+      }
+    };
+    const stationField = buildField("Current Station", stationSelect);
+    fieldsContainer.appendChild(stationField);
+
+    container.appendChild(fieldsContainer);
+
+    // Actions
+    const actions = document.createElement("div");
+    actions.className = "edit-form-actions";
+
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.className = "save-btn";
+    saveBtn.onclick = async () => {
+      const newNumber = numberInput.value.trim();
+      if (!newNumber) {
+        alert("Apparatus number is required.");
+        numberInput.focus();
+        return;
+      }
+
+      // Check for duplicate number
+      const duplicate = apparatus.some(other => other.apparatusNumber !== app.apparatusNumber && other.apparatusNumber === newNumber);
+      if (duplicate) {
+        alert("Apparatus number must be unique.");
+        numberInput.focus();
+        return;
+      }
+
+      app.apparatusNumber = newNumber;
+      app.id = idInput.value.trim();
+      app.apparatusType = typeSelect.value;
+      app.reserve = reserveCheckbox.checked;
+      app.notes = notesInput.value.trim();
+      app.homeStationId = homeSelect.value;
+      app.stationId = stationSelect.value;
+
+      await saveApparatus(apparatus);
+      apparatusFormDirty = false;
+      await renderDashboard();
+      await openAdminModal();
+    };
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "Delete";
+    deleteBtn.classList.add("danger");
+    deleteBtn.onclick = async () => {
+      const displayName = app.id ? `${app.id} (${app.apparatusNumber})` : app.apparatusNumber;
+      if (!confirm(`Are you sure you want to delete apparatus ${displayName}?`)) {
+        return;
+      }
+      await deleteApparatusFromPB(app);
+      const index = apparatus.findIndex(a => a.apparatusNumber === app.apparatusNumber);
+      if (index > -1) {
+        apparatus.splice(index, 1);
+      }
+      await saveApparatus(apparatus);
+      clearApparatusSelection();
+      await openAdminModal();
+      await renderDashboard();
+    };
+
+    actions.appendChild(saveBtn);
+    actions.appendChild(deleteBtn);
+    container.appendChild(actions);
+  }
+
   async function openAdminModal() {
     const wasHidden = !adminModalEl || adminModalEl.style.display !== "block";
     const { stations, apparatus } = await loadData();
@@ -1496,209 +1874,170 @@
 
     if (stationListEl) {
       stationListEl.innerHTML = "";
-      stations.forEach((station, index) => {
-        const row = document.createElement("div");
-        row.className = "row";
 
-      const body = document.createElement("div");
-      body.className = "row-body column";
+      // Create button container
+      const buttonContainer = document.createElement("div");
+      buttonContainer.className = "selection-buttons";
 
-        const nameInput = document.createElement("input");
-        nameInput.value = station.name;
-        nameInput.placeholder = "Station name";
-        nameInput.onchange = async () => {
-          station.name = nameInput.value;
-          await saveStations(stations);
-          del.setAttribute("aria-label", `Delete ${station.name}`);
-          await renderDashboard();
-        };
-        const nameField = buildField("Name", nameInput);
+      // Create edit form
+      const editForm = document.createElement("div");
+      editForm.className = "edit-form";
+      editForm.id = "stationEditForm";
 
-      body.appendChild(nameField);
+      const sortedStations = sortStationsForSelection(stations);
 
-        const del = document.createElement("button");
-        del.textContent = "Delete";
-        del.classList.add("danger");
-        del.setAttribute("aria-label", `Delete ${station.name}`);
-        del.onclick = async () => {
-          const hasApparatus = apparatus.some(app => app.stationId === station.stationId || app.homeStationId === station.stationId);
-          if (hasApparatus) {
-            alert("Cannot delete station with assigned apparatus.");
-            return;
+      sortedStations.forEach(station => {
+        const btn = document.createElement("button");
+        btn.className = "selection-btn";
+        btn.textContent = station.name;
+        btn.onclick = () => {
+          if (!checkDirtyAndWarn("stations")) return;
+
+          // Toggle selection
+          if (selectedStationForEdit === station.stationId) {
+            clearStationSelection();
+            editForm.classList.remove("visible");
+            document.querySelectorAll("#stationEditForm").forEach(f => f.classList.remove("visible"));
+            document.querySelectorAll(".selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          } else {
+            selectedStationForEdit = station.stationId;
+            stationFormDirty = false;
+
+            // Update button states
+            buttonContainer.querySelectorAll(".selection-btn").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+
+            // Populate and show form
+            renderStationEditForm(editForm, station, stations, apparatus);
+            editForm.classList.add("visible");
           }
-          if (!confirm(`Are you sure you want to delete ${station.name}?`)) {
-            return;
-          }
-          await deleteStationFromPB(station);
-          stations.splice(index, 1);
-          const reordered = stations.map((s, idx) => ({ ...s, order: idx }));
-          await saveStations(reordered);
-          await openAdminModal();
-          await renderDashboard();
         };
 
-        const actions = document.createElement("div");
-        actions.className = "row-actions";
-        actions.appendChild(del);
-
-        row.appendChild(body);
-        row.appendChild(actions);
-        stationListEl.appendChild(row);
-
-        if (lastAddedStationId === station.stationId) {
-          setTimeout(() => {
-            nameInput.focus();
-            row.scrollIntoView({ behavior: "smooth", block: "center" });
-          }, 0);
-          lastAddedStationId = null;
+        if (selectedStationForEdit === station.stationId) {
+          btn.classList.add("selected");
         }
+
+        buttonContainer.appendChild(btn);
       });
+
+      stationListEl.appendChild(buttonContainer);
+      stationListEl.appendChild(editForm);
+
+      // If we just added a station, select it
+      if (lastAddedStationId) {
+        const addedStation = stations.find(s => s.stationId === lastAddedStationId);
+        if (addedStation) {
+          selectedStationForEdit = lastAddedStationId;
+          stationFormDirty = false;
+          buttonContainer.querySelectorAll(".selection-btn").forEach(b => {
+            if (b.textContent === addedStation.name) {
+              b.classList.add("selected");
+            }
+          });
+          renderStationEditForm(editForm, addedStation, stations, apparatus);
+          editForm.classList.add("visible");
+          setTimeout(() => {
+            const nameInput = editForm.querySelector("input[type='text']");
+            if (nameInput) {
+              nameInput.focus();
+              nameInput.select();
+            }
+          }, 0);
+        }
+        lastAddedStationId = null;
+      } else if (selectedStationForEdit) {
+        // Re-render the currently selected station
+        const station = stations.find(s => s.stationId === selectedStationForEdit);
+        if (station) {
+          renderStationEditForm(editForm, station, stations, apparatus);
+          editForm.classList.add("visible");
+        }
+      }
     }
 
     if (apparatusListEl) {
       apparatusListEl.innerHTML = "";
-      apparatus.forEach((app, index) => {
-        const row = document.createElement("div");
-        row.className = "row";
 
-        const rowContent = document.createElement("div");
-        rowContent.className = "row-body";
+      // Create button container
+      const buttonContainer = document.createElement("div");
+      buttonContainer.className = "selection-buttons";
 
-        const numberInput = document.createElement("input");
-        numberInput.value = app.apparatusNumber;
-        numberInput.placeholder = "Number";
-        numberInput.onchange = async () => {
-          const trimmed = numberInput.value.trim();
-          if (!trimmed) {
-            alert("Apparatus number is required.");
-            numberInput.value = app.apparatusNumber;
-            return;
-        }
-        const duplicate = apparatus.some((other, otherIndex) => otherIndex !== index && other.apparatusNumber === trimmed);
-        if (duplicate) {
-          alert("Apparatus number must be unique.");
-          numberInput.value = app.apparatusNumber;
-          return;
-        }
-        app.apparatusNumber = trimmed;
-        await saveApparatus(apparatus);
-        del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
-        await renderDashboard();
-      };
-        const numberField = buildField("Number", numberInput);
-        rowContent.appendChild(numberField);
+      // Create edit form
+      const editForm = document.createElement("div");
+      editForm.className = "edit-form";
+      editForm.id = "apparatusEditForm";
 
-        const idInput = document.createElement("input");
-        idInput.value = app.id || "";
-        idInput.placeholder = "ID (optional)";
-        idInput.onchange = async () => {
-          app.id = idInput.value.trim();
-          await saveApparatus(apparatus);
-          await renderDashboard();
-        };
-        const idField = buildField("ID", idInput);
-        rowContent.appendChild(idField);
+      const sortedApparatus = sortApparatusForSelection(apparatus);
 
-        const typeSelect = document.createElement("select");
-        APPARATUS_TYPES.forEach(type => {
-          const opt = document.createElement("option");
-          opt.value = type;
-          opt.textContent = type;
-          if (app.apparatusType === type) opt.selected = true;
-          typeSelect.appendChild(opt);
-        });
-        typeSelect.onchange = async () => {
-          app.apparatusType = typeSelect.value;
-          await saveApparatus(apparatus);
-          await renderDashboard();
-        };
-        const typeField = buildField("Type", typeSelect);
-        rowContent.appendChild(typeField);
+      sortedApparatus.forEach(app => {
+        const btn = document.createElement("button");
+        const colorClass = getColorClass(app.apparatusType);
+        btn.className = `selection-btn ${colorClass}`;
+        btn.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+        btn.onclick = () => {
+          if (!checkDirtyAndWarn("apparatus")) return;
 
-        const reserveCheckbox = document.createElement("input");
-        reserveCheckbox.type = "checkbox";
-        reserveCheckbox.checked = app.reserve || false;
-        reserveCheckbox.onchange = async () => {
-          app.reserve = reserveCheckbox.checked;
-          await saveApparatus(apparatus);
-          await renderDashboard();
-        };
-        const reserveLabel = document.createElement("label");
-        reserveLabel.className = "field checkbox-field";
-        reserveLabel.appendChild(reserveCheckbox);
-        const reserveText = document.createElement("span");
-        reserveText.className = "checkbox-label";
-        reserveText.textContent = "Reserve";
-        reserveLabel.appendChild(reserveText);
-        rowContent.appendChild(reserveLabel);
+          // Toggle selection
+          if (selectedApparatusForEdit === app.apparatusNumber) {
+            clearApparatusSelection();
+            editForm.classList.remove("visible");
+            document.querySelectorAll("#apparatusEditForm").forEach(f => f.classList.remove("visible"));
+            document.querySelectorAll(".selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          } else {
+            selectedApparatusForEdit = app.apparatusNumber;
+            apparatusFormDirty = false;
 
-        const notesInput = document.createElement("input");
-        notesInput.value = app.notes || "";
-        notesInput.placeholder = "Notes (optional)";
-        notesInput.onchange = async () => {
-          app.notes = notesInput.value;
-          await saveApparatus(apparatus);
-        };
-        const notesField = buildField("Notes", notesInput);
-        rowContent.appendChild(notesField);
+            // Update button states
+            buttonContainer.querySelectorAll(".selection-btn").forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
 
-        const homeSelect = document.createElement("select");
-        populateStationSelect(homeSelect, stations, app.homeStationId, "Home: Unassigned", "Home:");
-        homeSelect.onchange = async () => {
-          app.homeStationId = homeSelect.value;
-          await saveApparatus(apparatus);
-          await renderDashboard();
-        };
-        const homeField = buildField("Home", homeSelect);
-        rowContent.appendChild(homeField);
-
-        const stationSelect = document.createElement("select");
-        populateStationSelect(stationSelect, stations, app.stationId, "Current: Unassigned", "At:");
-        stationSelect.onchange = async () => {
-          app.stationId = stationSelect.value;
-          // If reserve apparatus is moved to home station, clear the ID
-          if (app.reserve && app.homeStationId === stationSelect.value) {
-            app.id = "";
-            idInput.value = "";
+            // Populate and show form
+            renderApparatusEditForm(editForm, app, apparatus, stations);
+            editForm.classList.add("visible");
           }
-          await saveApparatus(apparatus);
-          await renderDashboard();
-        };
-        const currentField = buildField("Current", stationSelect);
-        rowContent.appendChild(currentField);
-
-        const del = document.createElement("button");
-        del.textContent = "Delete";
-        del.classList.add("danger");
-        del.setAttribute("aria-label", `Delete apparatus ${app.apparatusNumber}`);
-        del.onclick = async () => {
-          const displayName = app.id ? `${app.id} (${app.apparatusNumber})` : app.apparatusNumber;
-          if (!confirm(`Are you sure you want to delete apparatus ${displayName}?`)) {
-            return;
-          }
-          await deleteApparatusFromPB(app);
-          apparatus.splice(index, 1);
-          await saveApparatus(apparatus);
-          await openAdminModal();
-          await renderDashboard();
         };
 
-        const actions = document.createElement("div");
-        actions.className = "row-actions";
-        actions.appendChild(del);
-
-        row.appendChild(rowContent);
-        row.appendChild(actions);
-        apparatusListEl.appendChild(row);
-
-        if (lastAddedApparatusNumber === app.apparatusNumber) {
-          setTimeout(() => {
-            numberInput.focus();
-            row.scrollIntoView({ behavior: "smooth", block: "center" });
-          }, 0);
-          lastAddedApparatusNumber = null;
+        if (selectedApparatusForEdit === app.apparatusNumber) {
+          btn.classList.add("selected");
         }
+
+        buttonContainer.appendChild(btn);
       });
+
+      apparatusListEl.appendChild(buttonContainer);
+      apparatusListEl.appendChild(editForm);
+
+      // If we just added an apparatus, select it
+      if (lastAddedApparatusNumber) {
+        const addedApparatus = apparatus.find(a => a.apparatusNumber === lastAddedApparatusNumber);
+        if (addedApparatus) {
+          selectedApparatusForEdit = lastAddedApparatusNumber;
+          apparatusFormDirty = false;
+          buttonContainer.querySelectorAll(".selection-btn").forEach(b => {
+            const btnText = addedApparatus.id ? `${addedApparatus.id} ${addedApparatus.apparatusNumber}` : addedApparatus.apparatusNumber;
+            if (b.textContent === btnText) {
+              b.classList.add("selected");
+            }
+          });
+          renderApparatusEditForm(editForm, addedApparatus, apparatus, stations);
+          editForm.classList.add("visible");
+          setTimeout(() => {
+            const numberInput = editForm.querySelector("input[type='text']");
+            if (numberInput) {
+              numberInput.focus();
+              numberInput.select();
+            }
+          }, 0);
+        }
+        lastAddedApparatusNumber = null;
+      } else if (selectedApparatusForEdit) {
+        // Re-render the currently selected apparatus
+        const app = apparatus.find(a => a.apparatusNumber === selectedApparatusForEdit);
+        if (app) {
+          renderApparatusEditForm(editForm, app, apparatus, stations);
+          editForm.classList.add("visible");
+        }
+      }
     }
 
     if (adminModalEl) {

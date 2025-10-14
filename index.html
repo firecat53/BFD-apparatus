@@ -616,7 +616,7 @@
                   window.location.hostname === '127.0.0.1' ||
                   window.location.protocol === 'file:')
     ? 'http://127.0.0.1:8090'
-    : 'https://your-domain.com'; // Update for production
+    : 'http://192.168.200.104:8090'; // TODO Update for production (domain name)
 
   const STATION_KEY = "stations";
   const APPARATUS_KEY = "apparatus";
@@ -873,15 +873,6 @@
   }
 
   // ========== End PocketBase API Functions ==========
-
-  function ensureLocalStorage() {
-    if (!localStorage.getItem(STATION_KEY)) {
-      localStorage.setItem(STATION_KEY, JSON.stringify([]));
-    }
-    if (!localStorage.getItem(APPARATUS_KEY)) {
-      localStorage.setItem(APPARATUS_KEY, JSON.stringify([]));
-    }
-  }
 
   function migrateStations(stations) {
     let dirty = false;

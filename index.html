@@ -1948,22 +1948,9 @@
       if (lastAddedStationId) {
         const addedStation = stations.find(s => s.stationId === lastAddedStationId);
         if (addedStation) {
-          selectedStationForEdit = lastAddedStationId;
+          buttonContainer.querySelectorAll(".selection-btn").forEach(b => b.classList.remove("selected"));
+          selectedStationForEdit = null;
           stationFormDirty = false;
-          buttonContainer.querySelectorAll(".selection-btn").forEach(b => {
-            if (b.textContent === addedStation.name) {
-              b.classList.add("selected");
-            }
-          });
-          renderStationEditForm(editForm, addedStation, stations, apparatus);
-          editForm.classList.add("visible");
-          setTimeout(() => {
-            const nameInput = editForm.querySelector("input[type='text']");
-            if (nameInput) {
-              nameInput.focus();
-              nameInput.select();
-            }
-          }, 0);
         }
         lastAddedStationId = null;
       } else if (selectedStationForEdit) {

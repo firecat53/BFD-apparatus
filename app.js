@@ -370,6 +370,24 @@ async function deleteApparatusFromPB(apparatus) {
   }
 }
 
+async function setupRealtimeSubscriptions() {
+  try {
+    // Subscribe to stations changes
+    await pb.collection('stations').subscribe('*', async (e) => {
+      await renderDashboard();
+    });
+
+    // Subscribe to apparatus changes
+    await pb.collection('apparatus').subscribe('*', async (e) => {
+      await renderDashboard();
+    });
+
+    console.log('Real-time subscriptions active');
+  } catch (error) {
+    console.error('Failed to setup real-time subscriptions:', error);
+  }
+}
+
 // ========== End PocketBase API Functions ==========
 
 function migrateStations(stations) {
@@ -1481,3 +1499,4 @@ if (loginButton) {
 // Check auth and render dashboard on page load
 checkAuth();
 renderDashboard();
+setupRealtimeSubscriptions();

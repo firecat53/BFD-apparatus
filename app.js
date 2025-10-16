@@ -257,12 +257,19 @@ function switchTab(tabId) {
 // ========== PocketBase API Functions ==========
 
 async function apiRequest(endpoint, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+
+  // Add authorization header if authenticated
+  if (pb.authStore.token) {
+    headers['Authorization'] = `Bearer ${pb.authStore.token}`;
+  }
+
   const response = await fetch(`${PB_URL}/api/collections/${endpoint}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers
-    }
+    headers
   });
   if (!response.ok) {
     const errorText = await response.text();

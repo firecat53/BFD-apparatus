@@ -131,12 +131,12 @@ async function handleLogin() {
   }
 }
 
-function handleLogout() {
+async function handleLogout() {
   pb.authStore.clear();
   isAuthenticated = false;
   closeAdminModal();
   updateUIForAuthState();
-  showLoginModal();
+  await renderDashboard();
 }
 
 function updateUIForAuthState() {

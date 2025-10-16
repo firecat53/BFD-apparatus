@@ -55,12 +55,110 @@ const importInput = document.getElementById("importInput");
 let bodyScrollLockCount = 0;
 let previousBodyOverflow = "";
 const DEFAULT_ADMIN_TAB = "apparatus";
+// Initialize PocketBase
+const pb = new PocketBase(PB_URL);
+let isAuthenticated = false;
+
 let lastAddedStationId = null;
 let lastAddedApparatusNumber = null;
 let selectedStationForEdit = null;
 let selectedApparatusForEdit = null;
 let stationFormDirty = false;
 let apparatusFormDirty = false;
+
+// ========== Authentication Functions ==========
+
+function checkAuth() {
+  isAuthenticated = pb.authStore.isValid;
+  updateUIForAuthState();
+  return isAuthenticated;
+}
+
+function showLoginModal() {
+  const loginModal = document.getElementById('loginModal');
+  if (loginModal) {
+    loginModal.style.display = 'block';
+    lockBodyScroll();
+    const usernameInput = document.getElementById('loginUsername');
+    if (usernameInput) usernameInput.focus();
+  }
+}
+
+function hideLoginModal() {
+  const loginModal = document.getElementById('loginModal');
+  if (loginModal) {
+    loginModal.style.display = 'none';
+    unlockBodyScroll();
+  }
+  clearLoginError();
+}
+
+function showLoginError(message) {
+  const errorEl = document.getElementById('loginError');
+  if (errorEl) {
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  }
+}
+
+function clearLoginError() {
+  const errorEl = document.getElementById('loginError');
+  if (errorEl) {
+    errorEl.textContent = '';
+    errorEl.classList.add('hidden');
+  }
+}
+
+async function handleLogin() {
+  const username = document.getElementById('loginUsername')?.value.trim();
+  const password = document.getElementById('loginPassword')?.value;
+
+  if (!username || !password) {
+    showLoginError('Please enter both username and password');
+    return;
+  }
+
+  try {
+    clearLoginError();
+    await pb.collection('users').authWithPassword(username, password);
+    isAuthenticated = true;
+    hideLoginModal();
+    updateUIForAuthState();
+    await renderDashboard();
+  } catch (error) {
+    console.error('Login error:', error);
+    showLoginError('Invalid username or password');
+  }
+}
+
+function handleLogout() {
+  pb.authStore.clear();
+  isAuthenticated = false;
+  closeAdminModal();
+  updateUIForAuthState();
+  showLoginModal();
+}
+
+function updateUIForAuthState() {
+  const adminBtn = document.querySelector('.admin-btn');
+  if (adminBtn) {
+    adminBtn.style.display = isAuthenticated ? 'block' : 'none';
+  }
+
+  // Show/hide login button
+  let loginBtn = document.querySelector('.login-btn');
+  if (!isAuthenticated && !loginBtn) {
+    loginBtn = document.createElement('button');
+    loginBtn.className = 'login-btn';
+    loginBtn.textContent = 'Login';
+    loginBtn.onclick = showLoginModal;
+    document.body.appendChild(loginBtn);
+  } else if (isAuthenticated && loginBtn) {
+    loginBtn.remove();
+  }
+}
+
+// ========== End Authentication Functions ==========
 
 function lockBodyScroll() {
   if (bodyScrollLockCount === 0) {
@@ -641,7 +739,7 @@ async function renderDashboard() {
     const header = document.createElement("div");
     header.className = "station-header";
     header.textContent = station.name;
-    if (!isTouchDevice) {
+    if (!isTouchDevice && isAuthenticated) {
       header.setAttribute("draggable", "true");
       header.addEventListener("dragstart", e => {
         draggingStation = station.stationId;
@@ -657,7 +755,7 @@ async function renderDashboard() {
     const body = document.createElement("div");
     body.className = "station-body";
 
-    if (!isTouchDevice) {
+    if (!isTouchDevice && isAuthenticated) {
       card.addEventListener("dragover", e => {
         if (draggingApparatus || draggingStation) {
           e.preventDefault();
@@ -723,7 +821,7 @@ async function renderDashboard() {
       box.className = `apparatus ${colorClass}`;
       box.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
 
-      if (!isTouchDevice) {
+      if (!isTouchDevice && isAuthenticated) {
         box.setAttribute("draggable", "true");
         box.addEventListener("dragstart", e => {
           draggingApparatus = app.apparatusNumber;
@@ -741,7 +839,7 @@ async function renderDashboard() {
       }
 
       box.addEventListener("click", e => {
-        if (draggingApparatus) return;
+        if (draggingApparatus || !isAuthenticated) return;
         openEditModal(app);
       });
 
@@ -749,7 +847,7 @@ async function renderDashboard() {
         box.addEventListener(
           "touchend",
           e => {
-            if (draggingApparatus) return;
+            if (draggingApparatus || !isAuthenticated) return;
             e.preventDefault();
             openEditModal(app);
           },
@@ -778,6 +876,7 @@ async function renderDashboard() {
 }
 
 async function openEditModal(app) {
+  if (!isAuthenticated) return;
   const { stations } = await loadData();
   editingNumber = app.apparatusNumber;
   if (editModalTitle) {
@@ -1160,6 +1259,18 @@ async function openAdminModal() {
     populateStationSelect(apparatusAdderStationSelect, stations, "", "Current: Unassigned", "At:");
   }
 
+  // Add logout button to each tab footer
+  document.querySelectorAll('.tab-footer').forEach(footer => {
+    let logoutBtn = footer.querySelector('.logout-btn');
+    if (!logoutBtn) {
+      logoutBtn = document.createElement('button');
+      logoutBtn.className = 'logout-btn danger';
+      logoutBtn.textContent = 'Logout';
+      logoutBtn.onclick = handleLogout;
+      footer.insertBefore(logoutBtn, footer.firstChild);
+    }
+  });
+
   if (stationListEl) {
     stationListEl.innerHTML = "";
 
@@ -1332,4 +1443,26 @@ async function openAdminModal() {
   }
 }
 
+// Login modal handlers
+const loginButton = document.getElementById('loginButton');
+const loginUsernameInput = document.getElementById('loginUsername');
+const loginPasswordInput = document.getElementById('loginPassword');
+
+if (loginButton) {
+  loginButton.addEventListener('click', handleLogin);
+}
+
+[loginUsernameInput, loginPasswordInput].forEach(input => {
+  if (input) {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleLogin();
+      }
+    });
+  }
+});
+
+// Check auth and render dashboard on page load
+checkAuth();
 renderDashboard();

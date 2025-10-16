@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Apparatus Dashboard</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/pocketbase@0.21.1/dist/pocketbase.umd.js"></script>
 </head>
 <body>
   <h1>Fire Department Apparatus Dashboard</h1>
@@ -137,6 +138,25 @@
           </label>
         </div>
         <p class="data-note">Export creates a JSON file containing both stations and apparatus arrays. Import replaces existing data with the uploaded backup.</p>
+      </div>
+    </div>
+  </div>
+  <!-- Login Modal -->
+  <div id="loginModal">
+    <div class="modal-content login-modal-content">
+      <h2>Fire Department Login</h2>
+      <p class="login-description">Please login to access the dashboard</p>
+      <div id="loginError" class="login-error hidden"></div>
+      <div class="login-form">
+        <label class="field">
+          <span class="field-label">Username</span>
+          <input type="text" id="loginUsername" placeholder="Enter username" />
+        </label>
+        <label class="field">
+          <span class="field-label">Password</span>
+          <input type="password" id="loginPassword" placeholder="Enter password" />
+        </label>
+        <button id="loginButton" type="button">Login</button>
       </div>
     </div>
   </div>

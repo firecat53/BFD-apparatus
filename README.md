@@ -41,7 +41,7 @@ apparatus. Use this guide to keep contributions consistent.
   status.
 
 ## Build, Test, and Development Commands
-* `pocketbase serve --publicDir . --dir db/`
+* `pocketbase serve --publicDir .`
 * Access app at `http://localhost:8090` and PocketBase admin page at
   `http://localhost:8090/_/`
 

@@ -1332,6 +1332,4 @@ async function openAdminModal() {
   }
 }
 
-
-
 renderDashboard();

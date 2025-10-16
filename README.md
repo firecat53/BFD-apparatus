@@ -27,8 +27,8 @@ apparatus. Use this guide to keep contributions consistent.
   and `apparatus` records; imports include automatic data migration.
 
 ## Project Structure & Module Organization
-- `index.html` contains the entire app (markup, styles, logic) for quick
-  iteration.
+- `index.html` contains the markup, `styles.css` for CSS rules, and `app.js` for
+  the bulk of the Javascript logic.
 - [PocketBase](https://pocketbase.io/) is used for an sqlite backend and server.
 
 ## Data Model

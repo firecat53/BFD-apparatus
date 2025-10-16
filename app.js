@@ -692,9 +692,17 @@ async function handleDataImport(event) {
         return;
       }
 
-      // Import to PocketBase
-      await saveStations(parsed.stations);
-      await saveApparatus(parsed.apparatus);
+      // Delete all existing data first
+      const currentData = await loadData();
+      await Promise.all(currentData.apparatus.map(app => deleteApparatusFromPB(app)));
+      await Promise.all(currentData.stations.map(station => deleteStationFromPB(station)));
+
+      // Import to PocketBase - strip _pbId to create new records
+      const stationsToImport = parsed.stations.map(({ _pbId, ...station }) => station);
+      const apparatusToImport = parsed.apparatus.map(({ _pbId, ...app }) => app);
+
+      await saveStations(stationsToImport);
+      await saveApparatus(apparatusToImport);
 
       lastAddedStationId = null;
       lastAddedApparatusNumber = null;

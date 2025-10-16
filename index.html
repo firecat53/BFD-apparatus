@@ -894,7 +894,9 @@
       const errorText = await response.text();
       throw new Error(`API Error (${response.status}): ${errorText}`);
     }
-    return response.json();
+    // DELETE requests often return no content
+    const text = await response.text();
+    return text ? JSON.parse(text) : null;
   }
 
   // Station API
@@ -1687,15 +1689,9 @@
         return;
       }
       await deleteStationFromPB(station);
-      const index = stations.findIndex(s => s.stationId === station.stationId);
-      if (index > -1) {
-        stations.splice(index, 1);
-      }
-      const reordered = stations.map((s, idx) => ({ ...s, order: idx }));
-      await saveStations(reordered);
       clearStationSelection();
-      await openAdminModal();
       await renderDashboard();
+      await openAdminModal();
     };
 
     actions.appendChild(saveBtn);
@@ -1861,14 +1857,9 @@
         return;
       }
       await deleteApparatusFromPB(app);
-      const index = apparatus.findIndex(a => a.apparatusNumber === app.apparatusNumber);
-      if (index > -1) {
-        apparatus.splice(index, 1);
-      }
-      await saveApparatus(apparatus);
       clearApparatusSelection();
-      await openAdminModal();
       await renderDashboard();
+      await openAdminModal();
     };
 
     actions.appendChild(saveBtn);

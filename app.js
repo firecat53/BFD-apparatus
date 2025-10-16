@@ -3,7 +3,7 @@ const PB_URL = (window.location.hostname === 'localhost' ||
                 window.location.hostname === '127.0.0.1' ||
                 window.location.protocol === 'file:')
   ? 'http://127.0.0.1:8090'
-  : 'http://192.168.200.104:8090'; // TODO Update for production (domain name)
+  : 'https://bfd.firecat53.com';
 
 const STATION_KEY = "stations";
 const APPARATUS_KEY = "apparatus";

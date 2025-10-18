@@ -244,7 +244,28 @@ document.addEventListener("keydown", event => {
     if (editModalEl && editModalEl.style.display === "block") {
       closeEditModal();
     } else if (adminModalEl && adminModalEl.style.display === "block") {
-      closeAdminModal();
+      // Only close modal if no items are being edited
+      if (!selectedStationForEdit && !selectedApparatusForEdit) {
+        closeAdminModal();
+      } else {
+        // Clear the selection and show button list
+        if (selectedStationForEdit) {
+          clearStationSelection();
+          const editForm = document.getElementById("stationEditForm");
+          if (editForm) editForm.classList.remove("visible");
+          document.querySelectorAll("#stationList .selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          const buttonContainer = document.querySelector("#stationList .selection-buttons");
+          if (buttonContainer) buttonContainer.style.display = "";
+        }
+        if (selectedApparatusForEdit) {
+          clearApparatusSelection();
+          const editForm = document.getElementById("apparatusEditForm");
+          if (editForm) editForm.classList.remove("visible");
+          document.querySelectorAll("#apparatusList .selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          const buttonContainer = document.querySelector("#apparatusList .selection-buttons");
+          if (buttonContainer) buttonContainer.style.display = "";
+        }
+      }
     }
   }
 });
@@ -1046,7 +1067,7 @@ function clearApparatusSelection() {
   apparatusFormDirty = false;
 }
 
-function renderStationEditForm(container, station, stations, apparatus) {
+function renderStationEditForm(container, station, stations, apparatus, buttonContainer) {
   container.innerHTML = "";
 
   const header = document.createElement("h3");
@@ -1084,6 +1105,8 @@ function renderStationEditForm(container, station, stations, apparatus) {
     station.name = newName;
     await saveStations(stations);
     stationFormDirty = false;
+    clearStationSelection();
+    if (buttonContainer) buttonContainer.style.display = "";
     await renderDashboard();
     await openAdminModal();
   };
@@ -1102,6 +1125,7 @@ function renderStationEditForm(container, station, stations, apparatus) {
     }
     await deleteStationFromPB(station);
     clearStationSelection();
+    if (buttonContainer) buttonContainer.style.display = "";
     await renderDashboard();
     await openAdminModal();
   };
@@ -1111,7 +1135,7 @@ function renderStationEditForm(container, station, stations, apparatus) {
   container.appendChild(actions);
 }
 
-function renderApparatusEditForm(container, app, apparatus, stations) {
+function renderApparatusEditForm(container, app, apparatus, stations, buttonContainer) {
   container.innerHTML = "";
 
   const header = document.createElement("h3");
@@ -1256,6 +1280,8 @@ function renderApparatusEditForm(container, app, apparatus, stations) {
 
     await saveApparatus(apparatus);
     apparatusFormDirty = false;
+    clearApparatusSelection();
+    if (buttonContainer) buttonContainer.style.display = "";
     await renderDashboard();
     await openAdminModal();
   };
@@ -1270,6 +1296,7 @@ function renderApparatusEditForm(container, app, apparatus, stations) {
     }
     await deleteApparatusFromPB(app);
     clearApparatusSelection();
+    if (buttonContainer) buttonContainer.style.display = "";
     await renderDashboard();
     await openAdminModal();
   };
@@ -1335,6 +1362,7 @@ async function openAdminModal() {
           editForm.classList.remove("visible");
           document.querySelectorAll("#stationEditForm").forEach(f => f.classList.remove("visible"));
           document.querySelectorAll(".selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          buttonContainer.style.display = "";
         } else {
           selectedStationForEdit = station.stationId;
           stationFormDirty = false;
@@ -1343,8 +1371,9 @@ async function openAdminModal() {
           buttonContainer.querySelectorAll(".selection-btn").forEach(b => b.classList.remove("selected"));
           btn.classList.add("selected");
 
-          // Populate and show form
-          renderStationEditForm(editForm, station, stations, apparatus);
+          // Hide button list and show form
+          buttonContainer.style.display = "none";
+          renderStationEditForm(editForm, station, stations, apparatus, buttonContainer);
           editForm.classList.add("visible");
         }
       };
@@ -1372,7 +1401,8 @@ async function openAdminModal() {
       // Re-render the currently selected station
       const station = stations.find(s => s.stationId === selectedStationForEdit);
       if (station) {
-        renderStationEditForm(editForm, station, stations, apparatus);
+        buttonContainer.style.display = "none";
+        renderStationEditForm(editForm, station, stations, apparatus, buttonContainer);
         editForm.classList.add("visible");
       }
     }
@@ -1410,6 +1440,7 @@ async function openAdminModal() {
           editForm.classList.remove("visible");
           document.querySelectorAll("#apparatusEditForm").forEach(f => f.classList.remove("visible"));
           document.querySelectorAll(".selection-btn.selected").forEach(b => b.classList.remove("selected"));
+          buttonContainer.style.display = "";
         } else {
           selectedApparatusForEdit = app.apparatusNumber;
           apparatusFormDirty = false;
@@ -1418,8 +1449,9 @@ async function openAdminModal() {
           buttonContainer.querySelectorAll(".selection-btn").forEach(b => b.classList.remove("selected"));
           btn.classList.add("selected");
 
-          // Populate and show form
-          renderApparatusEditForm(editForm, app, apparatus, stations);
+          // Hide button list and show form
+          buttonContainer.style.display = "none";
+          renderApparatusEditForm(editForm, app, apparatus, stations, buttonContainer);
           editForm.classList.add("visible");
         }
       };
@@ -1451,7 +1483,8 @@ async function openAdminModal() {
       // Re-render the currently selected apparatus
       const app = apparatus.find(a => a.apparatusNumber === selectedApparatusForEdit);
       if (app) {
-        renderApparatusEditForm(editForm, app, apparatus, stations);
+        buttonContainer.style.display = "none";
+        renderApparatusEditForm(editForm, app, apparatus, stations, buttonContainer);
         editForm.classList.add("visible");
       }
     }

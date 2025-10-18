@@ -21,7 +21,11 @@ const DEFAULT_TYPE = "Utility";
 let editingNumber = null;
 let draggingApparatus = null;
 let draggingStation = null;
-const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+// Detect actual mobile/tablet devices, not just touch capability
+// This prevents disabling drag-drop on Windows devices with touchscreens
+const isTouchDevice = (("ontouchstart" in window || navigator.maxTouchPoints > 0) &&
+                       (window.matchMedia("(pointer: coarse)").matches ||
+                        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)));
 const adminModalEl = document.getElementById("adminModal");
 const editModalEl = document.getElementById("editModal");
 const editModalTitle = document.getElementById("editModalTitle");

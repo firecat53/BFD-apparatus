@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Fire engine icon">
+  <title>Fire engine</title>
+  <!-- Wheels -->
+  <circle cx="22" cy="48" r="6" fill="#212121"/>
+  <circle cx="46" cy="48" r="6" fill="#212121"/>
+  <circle cx="22" cy="48" r="2.5" fill="#ECEFF1"/>
+  <circle cx="46" cy="48" r="2.5" fill="#ECEFF1"/>
+
+  <!-- Cab (drawn first so body overlays the join) -->
+  <rect x="36" y="18" width="22" height="14" rx="3" fill="#E53935" stroke="#B71C1C" stroke-width="2"/>
+
+  <!-- Body -->
+  <rect x="6" y="26" width="52" height="20" rx="3" fill="#E53935" stroke="#B71C1C" stroke-width="2"/>
+
+  <!-- Ladder -->
+  <rect x="10" y="18" width="22" height="4" rx="1" fill="#FFFFFF"/>
+  <rect x="14" y="18" width="2" height="4" fill="#D32F2F"/>
+  <rect x="20" y="18" width="2" height="4" fill="#D32F2F"/>
+  <rect x="26" y="18" width="2" height="4" fill="#D32F2F"/>
+
+  <!-- Window -->
+  <rect x="40" y="22" width="12" height="8" rx="2" fill="#B3E5FC" stroke="#81D4FA" stroke-width="1"/>
+
+  <!-- Beacon and headlight -->
+  <rect x="48" y="14" width="6" height="4" rx="1" fill="#FFD54F"/>
+  <circle cx="58" cy="36" r="2" fill="#FFF59D"/>
+
+  <!-- Bumper hint -->
+  <rect x="56" y="40" width="4" height="4" rx="1" fill="#B0BEC5"/>
+</svg>

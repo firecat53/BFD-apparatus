@@ -7,6 +7,7 @@ const PB_URL = (window.location.hostname === 'localhost' ||
 
 const STATION_KEY = "stations";
 const APPARATUS_KEY = "apparatus";
+const APPARATUS_TYPES = ["Fire", "Aid", "Medic", "AT", "Staff", "Utility"];
 const TYPE_TO_CLASS = {
   Fire: "red",
   Aid: "green",
@@ -15,7 +16,6 @@ const TYPE_TO_CLASS = {
   Staff: "purple",
   Utility: "black"
 };
-const APPARATUS_TYPES = Object.keys(TYPE_TO_CLASS);
 const DEFAULT_TYPE = "Utility";
 
 let editingNumber = null;
@@ -857,20 +857,7 @@ async function renderDashboard() {
     }
 
     const stationApparatus = apparatus.filter(app => app.stationId === station.stationId);
-    const stationApparatusIndexed = stationApparatus.map((app, index) => ({ app, index }));
-    const sortedStationApparatus = stationApparatusIndexed
-      .slice()
-      .sort((a, b) => {
-        const aReserve = a.app.reserve;
-        const bReserve = b.app.reserve;
-        if (aReserve && !bReserve) return 1;
-        if (!aReserve && bReserve) return -1;
-        if (aReserve && bReserve) {
-          return a.app.apparatusNumber.localeCompare(b.app.apparatusNumber, undefined, { numeric: true, sensitivity: "base" });
-        }
-        return a.index - b.index;
-      })
-      .map(entry => entry.app);
+    const sortedStationApparatus = sortApparatus(stationApparatus);
     const homeGhosts = apparatus.filter(app => app.homeStationId === station.stationId && app.stationId !== station.stationId);
 
     sortedStationApparatus.forEach(app => {
@@ -1035,16 +1022,36 @@ function sortStationsForSelection(stations) {
   );
 }
 
-function sortApparatusForSelection(apparatus) {
+function sortApparatus(apparatus) {
   const typeOrder = ["Fire", "Aid", "Medic", "AT", "Staff", "Utility"];
   return [...apparatus].sort((a, b) => {
-    const typeIndexA = typeOrder.indexOf(a.apparatusType);
-    const typeIndexB = typeOrder.indexOf(b.apparatusType);
+    // First: group by reserve (non-reserve first)
+    const aReserve = a.reserve || false;
+    const bReserve = b.reserve || false;
+    if (aReserve !== bReserve) {
+      return aReserve ? 1 : -1;
+    }
+
+    // Second: sort by apparatus type (case-insensitive)
+    const aType = String(a.apparatusType || "").trim();
+    const bType = String(b.apparatusType || "").trim();
+    let typeIndexA = typeOrder.findIndex(t => t.toLowerCase() === aType.toLowerCase());
+    let typeIndexB = typeOrder.findIndex(t => t.toLowerCase() === bType.toLowerCase());
+    // If type not found, put it at the end
+    if (typeIndexA === -1) typeIndexA = typeOrder.length;
+    if (typeIndexB === -1) typeIndexB = typeOrder.length;
     if (typeIndexA !== typeIndexB) {
       return typeIndexA - typeIndexB;
     }
+
+    // Third: sort alphanumerically by apparatus number
     return a.apparatusNumber.localeCompare(b.apparatusNumber, undefined, { numeric: true, sensitivity: "base" });
   });
+}
+
+// Alias for backwards compatibility
+function sortApparatusForSelection(apparatus) {
+  return sortApparatus(apparatus);
 }
 
 function checkDirtyAndWarn(tabType) {

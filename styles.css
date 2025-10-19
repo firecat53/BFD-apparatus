@@ -103,6 +103,16 @@ h1 {
   );
 }
 
+.apparatus.oos,
+.selection-btn.oos {
+  opacity: 0.75;
+}
+
+.apparatus.oos s,
+.selection-btn.oos s {
+  text-decoration-color: black;
+}
+
 .admin-btn {
   padding: 0.5rem 1rem;
 }

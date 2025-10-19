@@ -30,10 +30,16 @@
           <span class="field-label">Apparatus Type</span>
           <select id="editType"></select>
         </label>
-        <label class="field checkbox-field">
-          <input type="checkbox" id="editReserve" />
-          <span class="checkbox-label">Reserve</span>
-        </label>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <label class="field checkbox-field" style="margin-bottom: 0;">
+            <input type="checkbox" id="editReserve" />
+            <span class="checkbox-label">Reserve</span>
+          </label>
+          <label class="field checkbox-field" style="margin-bottom: 0;">
+            <input type="checkbox" id="editOOS" />
+            <span class="checkbox-label">OOS</span>
+          </label>
+        </div>
         <label class="field">
           <span class="field-label">Home Station</span>
           <select id="editHomeStation"></select>
@@ -103,10 +109,16 @@
               <span class="field-label">Type</span>
               <select id="apparatusAdderType"></select>
             </label>
-            <label class="field checkbox-field">
-              <input type="checkbox" id="apparatusAdderReserve" />
-              <span class="checkbox-label">Reserve</span>
-            </label>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+              <label class="field checkbox-field" style="margin-bottom: 0;">
+                <input type="checkbox" id="apparatusAdderReserve" />
+                <span class="checkbox-label">Reserve</span>
+              </label>
+              <label class="field checkbox-field" style="margin-bottom: 0;">
+                <input type="checkbox" id="apparatusAdderOOS" />
+                <span class="checkbox-label">OOS</span>
+              </label>
+            </div>
             <label class="field">
               <span class="field-label">Notes (optional)</span>
               <input type="text" id="apparatusAdderNotes" placeholder="Ready reserve" />

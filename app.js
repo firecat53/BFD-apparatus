@@ -32,6 +32,7 @@ const editModalTitle = document.getElementById("editModalTitle");
 const editIdInput = document.getElementById("editId");
 const editTypeSelect = document.getElementById("editType");
 const editReserveCheckbox = document.getElementById("editReserve");
+const editOOSCheckbox = document.getElementById("editOOS");
 const editHomeSelect = document.getElementById("editHomeStation");
 const editStationSelect = document.getElementById("editStation");
 const editNotesInput = document.getElementById("editNotes");
@@ -47,6 +48,7 @@ const apparatusAdderNumberInput = document.getElementById("apparatusAdderNumber"
 const apparatusAdderIdInput = document.getElementById("apparatusAdderId");
 const apparatusAdderTypeSelect = document.getElementById("apparatusAdderType");
 const apparatusAdderReserveCheckbox = document.getElementById("apparatusAdderReserve");
+const apparatusAdderOOSCheckbox = document.getElementById("apparatusAdderOOS");
 const apparatusAdderNotesInput = document.getElementById("apparatusAdderNotes");
 const apparatusAdderHomeSelect = document.getElementById("apparatusAdderHome");
 const apparatusAdderStationSelect = document.getElementById("apparatusAdderStation");
@@ -355,6 +357,7 @@ async function loadApparatusFromPB() {
     id: item.apparatusId || "",
     apparatusType: item.apparatusType,
     reserve: item.reserve || false,
+    oos: item.oos || false,
     notes: item.notes || "",
     homeStationId: item.homeStationId || "",
     stationId: item.stationId || "",
@@ -368,6 +371,7 @@ async function saveApparatusToPB(apparatus) {
     apparatusId: apparatus.id || "",
     apparatusType: apparatus.apparatusType,
     reserve: apparatus.reserve || false,
+    oos: apparatus.oos || false,
     notes: apparatus.notes || "",
     homeStationId: apparatus.homeStationId || "",
     stationId: apparatus.stationId || ""
@@ -652,6 +656,7 @@ function hideApparatusAdder() {
   if (apparatusAdderNumberInput) apparatusAdderNumberInput.value = "";
   if (apparatusAdderIdInput) apparatusAdderIdInput.value = "";
   if (apparatusAdderReserveCheckbox) apparatusAdderReserveCheckbox.checked = false;
+  if (apparatusAdderOOSCheckbox) apparatusAdderOOSCheckbox.checked = false;
   if (apparatusAdderNotesInput) apparatusAdderNotesInput.value = "";
   clearApparatusSelection();
 }
@@ -669,6 +674,7 @@ async function confirmAddApparatus() {
   const idValue = apparatusAdderIdInput ? apparatusAdderIdInput.value.trim() : "";
   const typeValue = apparatusAdderTypeSelect ? apparatusAdderTypeSelect.value : DEFAULT_TYPE;
   const reserveValue = apparatusAdderReserveCheckbox ? apparatusAdderReserveCheckbox.checked : false;
+  const oosValue = apparatusAdderOOSCheckbox ? apparatusAdderOOSCheckbox.checked : false;
   const notesValue = apparatusAdderNotesInput ? apparatusAdderNotesInput.value.trim() : "";
   const homeStationValue = apparatusAdderHomeSelect ? apparatusAdderHomeSelect.value : "";
   const stationValue = apparatusAdderStationSelect
@@ -691,6 +697,7 @@ async function confirmAddApparatus() {
       id: idValue,
       apparatusType: typeValue || DEFAULT_TYPE,
       reserve: reserveValue,
+      oos: oosValue,
       notes: notesValue,
       homeStationId: homeStationValue,
       stationId: stationValue
@@ -865,7 +872,13 @@ async function renderDashboard() {
       const box = document.createElement("div");
       const colorClass = getColorClass(app.apparatusType);
       box.className = `apparatus ${colorClass}`;
-      box.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+
+      const displayText = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+      if (app.oos) {
+        box.innerHTML = `<s>${displayText}</s> (OOS)`;
+      } else {
+        box.textContent = displayText;
+      }
 
       if (!isTouchDevice && isAuthenticated) {
         box.setAttribute("draggable", "true");
@@ -882,6 +895,10 @@ async function renderDashboard() {
 
       if (app.reserve) {
         box.classList.add("reserve");
+      }
+
+      if (app.oos) {
+        box.classList.add("oos");
       }
 
       box.addEventListener("click", e => {
@@ -908,9 +925,19 @@ async function renderDashboard() {
       const ghost = document.createElement("div");
       const colorClass = getColorClass(app.apparatusType);
       ghost.className = `apparatus ghost ${colorClass}`;
-      ghost.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+
+      const displayText = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+      if (app.oos) {
+        ghost.innerHTML = `<s>${displayText}</s> (OOS)`;
+      } else {
+        ghost.textContent = displayText;
+      }
+
       if (app.reserve) {
         ghost.classList.add("reserve");
+      }
+      if (app.oos) {
+        ghost.classList.add("oos");
       }
       body.appendChild(ghost);
     });
@@ -933,6 +960,9 @@ async function openEditModal(app) {
   }
   if (editReserveCheckbox) {
     editReserveCheckbox.checked = app.reserve || false;
+  }
+  if (editOOSCheckbox) {
+    editOOSCheckbox.checked = app.oos || false;
   }
   if (editNotesInput) {
     editNotesInput.value = app.notes || "";
@@ -992,6 +1022,7 @@ async function saveApparatusEdit() {
   const id = editIdInput ? editIdInput.value.trim() : "";
   const apparatusType = editTypeSelect ? editTypeSelect.value : DEFAULT_TYPE;
   const reserve = editReserveCheckbox ? editReserveCheckbox.checked : false;
+  const oos = editOOSCheckbox ? editOOSCheckbox.checked : false;
   const homeStationId = editHomeSelect ? editHomeSelect.value : "";
   const stationId = editStationSelect ? editStationSelect.value : "";
   const notes = editNotesInput ? editNotesInput.value.trim() : "";
@@ -1004,6 +1035,7 @@ async function saveApparatusEdit() {
         id,
         apparatusType,
         reserve,
+        oos,
         homeStationId: homeStationId || "",
         stationId: stationId || "",
         notes
@@ -1197,6 +1229,11 @@ function renderApparatusEditForm(container, app, apparatus, stations, buttonCont
   const typeField = buildField("Apparatus Type", typeSelect);
   fieldsContainer.appendChild(typeField);
 
+  // Reserve and OOS checkboxes in a flex container
+  const checkboxContainer = document.createElement("div");
+  checkboxContainer.style.display = "flex";
+  checkboxContainer.style.gap = "1rem";
+
   // Reserve checkbox
   const reserveCheckbox = document.createElement("input");
   reserveCheckbox.type = "checkbox";
@@ -1210,7 +1247,24 @@ function renderApparatusEditForm(container, app, apparatus, stations, buttonCont
   reserveText.className = "checkbox-label";
   reserveText.textContent = "Reserve";
   reserveLabel.appendChild(reserveText);
-  fieldsContainer.appendChild(reserveLabel);
+  checkboxContainer.appendChild(reserveLabel);
+
+  // OOS checkbox
+  const oosCheckbox = document.createElement("input");
+  oosCheckbox.type = "checkbox";
+  oosCheckbox.id = "apparatusEditOOSCheckbox";
+  oosCheckbox.checked = app.oos || false;
+  oosCheckbox.onchange = () => { apparatusFormDirty = true; };
+  const oosLabel = document.createElement("label");
+  oosLabel.className = "field checkbox-field";
+  oosLabel.appendChild(oosCheckbox);
+  const oosText = document.createElement("span");
+  oosText.className = "checkbox-label";
+  oosText.textContent = "OOS";
+  oosLabel.appendChild(oosText);
+  checkboxContainer.appendChild(oosLabel);
+
+  fieldsContainer.appendChild(checkboxContainer);
 
   // Notes field (textarea)
   const notesInput = document.createElement("textarea");
@@ -1282,6 +1336,7 @@ function renderApparatusEditForm(container, app, apparatus, stations, buttonCont
     app.id = idInput.value.trim();
     app.apparatusType = typeSelect.value;
     app.reserve = reserveCheckbox.checked;
+    app.oos = oosCheckbox.checked;
     app.notes = notesInput.value.trim();
     app.homeStationId = homeSelect.value;
     app.stationId = stationSelect.value;
@@ -1437,8 +1492,17 @@ async function openAdminModal() {
       if (app.reserve) {
         buttonClasses.push("reserve");
       }
+      if (app.oos) {
+        buttonClasses.push("oos");
+      }
       btn.className = buttonClasses.filter(Boolean).join(" ");
-      btn.textContent = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+
+      const displayText = app.id ? `${app.id} ${app.apparatusNumber}` : app.apparatusNumber;
+      if (app.oos) {
+        btn.innerHTML = `<s>${displayText}</s> (OOS)`;
+      } else {
+        btn.textContent = displayText;
+      }
       btn.onclick = () => {
         if (!checkDirtyAndWarn("apparatus")) return;
 

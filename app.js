@@ -151,12 +151,13 @@ function updateUIForAuthState() {
 
   // Show/hide login button
   let loginBtn = document.querySelector('.login-btn');
-  if (!isAuthenticated && !loginBtn) {
+  const header = document.querySelector('.page-header');
+  if (!isAuthenticated && !loginBtn && header) {
     loginBtn = document.createElement('button');
     loginBtn.className = 'login-btn';
     loginBtn.textContent = 'Login';
     loginBtn.onclick = showLoginModal;
-    document.body.appendChild(loginBtn);
+    header.appendChild(loginBtn);
   } else if (isAuthenticated && loginBtn) {
     loginBtn.remove();
   }

@@ -5,9 +5,24 @@ body {
   background: #f4f7fa;
 }
 
-h1 {
-  text-align: center;
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
   margin-bottom: 1rem;
+  position: relative;
+}
+
+h1 {
+  margin: 0;
+  text-align: center;
+}
+
+.page-header .admin-btn,
+.page-header .login-btn {
+  position: absolute;
+  right: 0;
 }
 
 .grid {
@@ -89,16 +104,10 @@ h1 {
 }
 
 .admin-btn {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
   padding: 0.5rem 1rem;
 }
 
 .login-btn {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
   padding: 0.5rem 1rem;
   background: #0f83ff;
 }

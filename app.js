@@ -65,6 +65,38 @@ const DEFAULT_ADMIN_TAB = "apparatus";
 const pb = new PocketBase(PB_URL);
 let isAuthenticated = false;
 
+// ========== Theme Management ==========
+
+function updateThemeColor() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', isDark ? '#1a1d23' : '#0f3460');
+  }
+}
+
+function initializeTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  if (savedTheme === 'dark') {
+    document.documentElement.classList.add('dark-theme');
+  }
+  updateThemeColor();
+}
+
+function toggleTheme() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  if (isDark) {
+    document.documentElement.classList.remove('dark-theme');
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.classList.add('dark-theme');
+    localStorage.setItem('theme', 'dark');
+  }
+  updateThemeColor();
+}
+
+// ========== End Theme Management ==========
+
 let lastAddedStationId = null;
 let lastAddedApparatusNumber = null;
 let selectedStationForEdit = null;
@@ -1605,7 +1637,8 @@ if (loginButton) {
   }
 });
 
-// Check auth and render dashboard on page load
+// Initialize theme and check auth on page load
+initializeTheme();
 checkAuth();
 renderDashboard();
 setupRealtimeSubscriptions();

@@ -933,21 +933,110 @@ async function renderDashboard() {
         box.classList.add("oos");
       }
 
-      box.addEventListener("click", e => {
+      const requestEdit = () => {
         if (draggingApparatus || !isAuthenticated) return;
         openEditModal(app);
-      });
+      };
 
       if (isTouchDevice) {
+        let touchMoved = false;
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchStartScrollX = 0;
+        let touchStartScrollY = 0;
+        const TOUCH_MOVE_THRESHOLD = 10;
+        const SCROLL_THRESHOLD = 2;
+
+        const resetTouchState = () => {
+          touchMoved = false;
+          touchStartX = 0;
+          touchStartY = 0;
+          touchStartScrollX = 0;
+          touchStartScrollY = 0;
+        };
+
+        box.addEventListener(
+          "touchstart",
+          e => {
+            if (!isAuthenticated) return;
+            if (e.touches.length !== 1) {
+              touchMoved = true;
+              return;
+            }
+            const { clientX, clientY } = e.touches[0];
+            touchStartX = clientX;
+            touchStartY = clientY;
+            touchMoved = false;
+            touchStartScrollX = window.scrollX;
+            touchStartScrollY = window.scrollY;
+          },
+          { passive: true }
+        );
+
+        box.addEventListener(
+          "touchmove",
+          e => {
+            if (touchMoved || e.touches.length !== 1) return;
+            const { clientX, clientY } = e.touches[0];
+            const dx = clientX - touchStartX;
+            const dy = clientY - touchStartY;
+            if (Math.abs(dx) > TOUCH_MOVE_THRESHOLD || Math.abs(dy) > TOUCH_MOVE_THRESHOLD) {
+              touchMoved = true;
+              return;
+            }
+
+            const scrollDx = Math.abs(window.scrollX - touchStartScrollX);
+            const scrollDy = Math.abs(window.scrollY - touchStartScrollY);
+            if (scrollDx > SCROLL_THRESHOLD || scrollDy > SCROLL_THRESHOLD) {
+              touchMoved = true;
+            }
+          },
+          { passive: true }
+        );
+
         box.addEventListener(
           "touchend",
           e => {
             if (draggingApparatus || !isAuthenticated) return;
+
+            const touch = e.changedTouches?.[0];
+            if (touch && !touchMoved) {
+              const dx = touch.clientX - touchStartX;
+              const dy = touch.clientY - touchStartY;
+              const scrollDx = Math.abs(window.scrollX - touchStartScrollX);
+              const scrollDy = Math.abs(window.scrollY - touchStartScrollY);
+
+              if (
+                Math.abs(dx) > TOUCH_MOVE_THRESHOLD ||
+                Math.abs(dy) > TOUCH_MOVE_THRESHOLD ||
+                scrollDx > SCROLL_THRESHOLD ||
+                scrollDy > SCROLL_THRESHOLD
+              ) {
+                touchMoved = true;
+              }
+            }
+
+            if (touchMoved) {
+              resetTouchState();
+              return;
+            }
+
             e.preventDefault();
-            openEditModal(app);
+            requestEdit();
+            resetTouchState();
           },
           { passive: false }
         );
+
+        box.addEventListener(
+          "touchcancel",
+          () => {
+            resetTouchState();
+          },
+          { passive: true }
+        );
+      } else {
+        box.addEventListener("click", requestEdit);
       }
 
       body.appendChild(box);

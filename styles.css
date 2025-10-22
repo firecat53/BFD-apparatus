@@ -240,6 +240,11 @@ html.dark-theme .theme-toggle-btn .moon-icon {
   text-decoration-color: black;
 }
 
+.apparatus.ghost {
+  opacity: 0.2;
+  cursor: default;
+}
+
 .admin-btn {
   padding: 0.5rem 1rem;
 }

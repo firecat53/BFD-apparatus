@@ -103,6 +103,8 @@ let selectedStationForEdit = null;
 let selectedApparatusForEdit = null;
 let stationFormDirty = false;
 let apparatusFormDirty = false;
+let realtimeSubscriptionsActive = false;
+let resumeRefreshPromise = null;
 
 // ========== Authentication Functions ==========
 
@@ -432,25 +434,89 @@ async function deleteApparatusFromPB(apparatus) {
   }
 }
 
-async function setupRealtimeSubscriptions() {
+async function setupRealtimeSubscriptions(force = false) {
+  if (force && realtimeSubscriptionsActive) {
+    try {
+      pb.collection('stations').unsubscribe('*');
+    } catch (err) {
+      console.warn('Failed to unsubscribe from stations realtime feed:', err);
+    }
+    try {
+      pb.collection('apparatus').unsubscribe('*');
+    } catch (err) {
+      console.warn('Failed to unsubscribe from apparatus realtime feed:', err);
+    }
+    realtimeSubscriptionsActive = false;
+  } else if (realtimeSubscriptionsActive) {
+    return;
+  }
+
+  let stationsSubscribed = false;
+
   try {
-    // Subscribe to stations changes
-    await pb.collection('stations').subscribe('*', async (e) => {
+    await pb.collection('stations').subscribe('*', async () => {
+      await renderDashboard();
+    });
+    stationsSubscribed = true;
+
+    await pb.collection('apparatus').subscribe('*', async () => {
       await renderDashboard();
     });
 
-    // Subscribe to apparatus changes
-    await pb.collection('apparatus').subscribe('*', async (e) => {
-      await renderDashboard();
-    });
-
+    realtimeSubscriptionsActive = true;
     console.log('Real-time subscriptions active');
   } catch (error) {
+    if (stationsSubscribed) {
+      try {
+        pb.collection('stations').unsubscribe('*');
+      } catch (unsubscribeError) {
+        console.warn('Failed to clean up stations realtime subscription:', unsubscribeError);
+      }
+    }
+    try {
+      pb.collection('apparatus').unsubscribe('*');
+    } catch (unsubscribeError) {
+      console.warn('Failed to clean up apparatus realtime subscription:', unsubscribeError);
+    }
+    realtimeSubscriptionsActive = false;
     console.error('Failed to setup real-time subscriptions:', error);
   }
 }
 
 // ========== End PocketBase API Functions ==========
+
+function isDocumentVisible() {
+  return document.visibilityState === 'visible';
+}
+
+async function refreshDataAfterResume(reason) {
+  if (!isDocumentVisible() && reason !== 'online') {
+    return;
+  }
+  if (resumeRefreshPromise) {
+    return resumeRefreshPromise;
+  }
+
+  const shouldForceResubscribe = realtimeSubscriptionsActive;
+
+  resumeRefreshPromise = (async () => {
+    try {
+      await setupRealtimeSubscriptions(shouldForceResubscribe);
+    } catch (error) {
+      console.error(`Failed to re-establish real-time subscriptions after ${reason}:`, error);
+    }
+
+    try {
+      await renderDashboard();
+    } catch (error) {
+      console.error(`Failed to refresh dashboard after ${reason}:`, error);
+    } finally {
+      resumeRefreshPromise = null;
+    }
+  })();
+
+  return resumeRefreshPromise;
+}
 
 function migrateStations(stations) {
   let dirty = false;
@@ -1724,6 +1790,32 @@ if (loginButton) {
       }
     });
   }
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    refreshDataAfterResume('visibilitychange');
+  }
+});
+
+window.addEventListener('focus', () => {
+  if (document.visibilityState === 'visible') {
+    refreshDataAfterResume('focus');
+  }
+});
+
+window.addEventListener('pageshow', event => {
+  if (event.persisted || document.visibilityState === 'visible') {
+    refreshDataAfterResume('pageshow');
+  }
+});
+
+window.addEventListener('online', () => {
+  refreshDataAfterResume('online');
+});
+
+window.addEventListener('offline', () => {
+  realtimeSubscriptionsActive = false;
 });
 
 // Initialize theme and check auth on page load

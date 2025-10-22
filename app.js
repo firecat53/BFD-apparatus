@@ -490,7 +490,8 @@ function isDocumentVisible() {
 }
 
 async function refreshDataAfterResume(reason) {
-  if (!isDocumentVisible() && reason !== 'online') {
+  const allowWhenHidden = reason === 'pageshow' || reason === 'focus';
+  if (!isDocumentVisible() && reason !== 'online' && !allowWhenHidden) {
     return;
   }
   if (resumeRefreshPromise) {

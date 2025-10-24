@@ -89,6 +89,32 @@ h1 {
   padding: 0 1rem;
 }
 
+.page-header .help-btn {
+  position: absolute;
+  right: 145px;
+  padding: 0.25rem;
+  background: transparent;
+  border: 1px solid var(--border-input);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.page-header .help-btn:hover {
+  background: var(--bg-row);
+  border-color: var(--border-primary);
+  transform: none;
+  box-shadow: none;
+}
+
 .page-header .theme-toggle-btn {
   position: absolute;
   right: 90px;
@@ -144,6 +170,7 @@ html.dark-theme .theme-toggle-btn .moon-icon {
     flex-wrap: wrap;
   }
 
+  .page-header .help-btn,
   .page-header .theme-toggle-btn,
   .page-header .admin-btn,
   .page-header .login-btn {
@@ -254,7 +281,7 @@ html.dark-theme .theme-toggle-btn .moon-icon {
   background: #0f83ff;
 }
 
-#adminModal, #editModal {
+#adminModal, #editModal, #helpModal {
   display: none;
   position: fixed;
   top: 0; left: 0;
@@ -797,4 +824,66 @@ button.secondary:hover {
 
 .logout-btn {
   margin-right: auto !important;
+}
+
+/* Help Modal Styles */
+.help-modal-content {
+  max-width: 600px;
+}
+
+.help-modal-content h2 {
+  margin: 0 0 1.5rem;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  text-align: center;
+}
+
+.help-section {
+  margin-bottom: 1.5rem;
+}
+
+.help-section:last-of-type {
+  margin-bottom: 1rem;
+}
+
+.help-section h3 {
+  margin: 0 0 0.75rem;
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.help-section p {
+  margin: 0.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.help-section p:first-of-type {
+  margin-top: 0;
+}
+
+.help-examples {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.75rem;
+}
+
+.help-example {
+  flex: 1;
+  min-width: 140px;
+  text-align: center;
+}
+
+.help-example .apparatus {
+  margin: 0 auto 0.5rem;
+  max-width: 140px;
+}
+
+.help-example p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }

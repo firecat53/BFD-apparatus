@@ -201,6 +201,26 @@ function updateUIForAuthState() {
 
 // ========== End Authentication Functions ==========
 
+// ========== Help Modal Functions ==========
+
+function openHelpModal() {
+  const helpModal = document.getElementById('helpModal');
+  if (helpModal) {
+    helpModal.style.display = 'block';
+    lockBodyScroll();
+  }
+}
+
+function closeHelpModal() {
+  const helpModal = document.getElementById('helpModal');
+  if (helpModal) {
+    helpModal.style.display = 'none';
+    unlockBodyScroll();
+  }
+}
+
+// ========== End Help Modal Functions ==========
+
 function lockBodyScroll() {
   if (bodyScrollLockCount === 0) {
     previousBodyOverflow = document.body.style.overflow || "";
@@ -263,7 +283,9 @@ if (importInput) {
   importInput.addEventListener("change", handleDataImport);
 }
 
-[adminModalEl, editModalEl].forEach(modal => {
+const helpModalEl = document.getElementById("helpModal");
+
+[adminModalEl, editModalEl, helpModalEl].forEach(modal => {
   if (!modal) return;
   modal.addEventListener("click", event => {
     if (event.target === modal) {
@@ -271,6 +293,8 @@ if (importInput) {
         closeAdminModal();
       } else if (modal === editModalEl) {
         closeEditModal();
+      } else if (modal === helpModalEl) {
+        closeHelpModal();
       }
     }
   });
@@ -303,6 +327,8 @@ document.addEventListener("keydown", event => {
           if (buttonContainer) buttonContainer.style.display = "";
         }
       }
+    } else if (helpModalEl && helpModalEl.style.display === "block") {
+      closeHelpModal();
     }
   }
 });

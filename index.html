@@ -14,6 +14,7 @@
 <body>
   <header class="page-header">
     <h1>Apparatus Dashboard</h1>
+    <button class="help-btn" onclick="openHelpModal()" aria-label="Help" title="Help">?</button>
     <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       <img src="/icons/sun.svg" alt="Sun icon" class="theme-icon sun-icon">
       <img src="/icons/moon.svg" alt="Moon icon" class="theme-icon moon-icon">
@@ -179,6 +180,62 @@
           <input type="password" id="loginPassword" placeholder="Enter password" />
         </label>
         <button id="loginButton" type="button">Login</button>
+      </div>
+    </div>
+  </div>
+  <!-- Help Modal -->
+  <div id="helpModal">
+    <div class="modal-content help-modal-content">
+      <h2>Help</h2>
+
+      <div class="help-section">
+        <h3>Apparatus Display</h3>
+        <div class="help-examples">
+          <div class="help-example">
+            <div class="apparatus red">E1 4919</div>
+            <p>Normal apparatus</p>
+          </div>
+          <div class="help-example">
+            <div class="apparatus blue reserve">M3 4530</div>
+            <p>Reserve</p>
+          </div>
+          <div class="help-example">
+            <div class="apparatus green oos"><s>A2 4526</s> (OOS)</div>
+            <p>Out-of-Service</p>
+          </div>
+          <div class="help-example">
+            <div class="apparatus yellow ghost">AT102 4514</div>
+            <p>Out of Home Station</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="help-section">
+        <h3>Reserve vs Out-of-Service</h3>
+        <p><strong>Reserve:</strong> Reserve apparatus.</p>
+        <p><strong>Out-of-Service (OOS):</strong> Apparatus temporarily OOS, typically when at a station and not the shop.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Moving Apparatus</h3>
+        <p><strong>Desktop:</strong> Click and drag apparatus between stations.</p>
+        <p><strong>Mobile:</strong> Tap an apparatus to open the menu, then select the destination station.</p>
+        <p><strong>Ghost:</strong> A "ghost" button will be left at a unit's "home" station, if assigned one.</p>
+      </div>
+
+      <div class="help-section">
+        <h3>Editing Apparatus</h3>
+        <p><strong>Desktop:</strong> Click an apparatus to edit its details.</p>
+        <p><strong>Mobile/Tablet:</strong> Tap an apparatus and select "Edit" from the menu.</p>
+        <p>
+          <strong>Name:</strong>
+          The ID is the in-service identifier (E1, AT102, etc.).
+          It can be empty if that unit is in service on a different apparatus.
+        </p>
+      </div>
+
+      <div class="modal-actions">
+        <button onclick="closeHelpModal()">Close</button>
       </div>
     </div>
   </div>

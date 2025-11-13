@@ -25,6 +25,7 @@
     chromium
     foot
     git
+    vim
   ];
 
   programs.sway = {

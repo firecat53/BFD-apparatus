@@ -63,6 +63,7 @@
   systemd.user.services.sway = {
     description = "Sway compositor";
     after = [ "graphical-session.target" ];
+    wantedby = [ "graphical-session.target" ];
     environment = {
       XDG_RUNTIME_DIR = "/run/user/1000";
       WLR_RENDERER = "pixman"; # Software renderer for better Pi compatibility

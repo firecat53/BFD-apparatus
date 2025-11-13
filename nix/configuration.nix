@@ -50,7 +50,7 @@
     exec_always 'swaymsg "workspace 1; layout splith"'
     exec chromium --no-sandbox --kiosk --app="https://bfd.firecat53.com" 
     exec 'swaymsg "workspace 1; layout splith"'
-    exec sh -c 'sleep 2 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
+    exec sh -c 'sleep 5 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
 
     # Emergency keybindings for maintenance
     bindsym $mod+Return exec $term
@@ -58,22 +58,14 @@
   '';
 
   # Auto-login and start sway
-  services.getty.autologinUser = "dashboard";
-
-  systemd.user.services.sway = {
-    description = "Sway compositor";
-    after = [ "graphical-session.target" ];
-    wantedby = [ "graphical-session.target" ];
-    environment = {
-      XDG_RUNTIME_DIR = "/run/user/1000";
-      WLR_RENDERER = "pixman"; # Software renderer for better Pi compatibility
-    };
-    serviceConfig = {
-      Type = "simple";
-      ExecStart = "${pkgs.sway}/bin/sway";
-      Restart = "on-failure";
-    };
+  services.getty = {
+    autologinUser = "dashboard";
+    autologinOnce = true;
   };
+
+  environment.loginShellInit = ''
+    [[ "$(tty)" == /dev/tty1 ]] && sway
+  '';
 
   # Enable keyboard and mouse
   services.libinput.enable = true;

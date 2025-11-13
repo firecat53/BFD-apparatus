@@ -1,10 +1,10 @@
 { lib, pkgs, ... }:
 
 {
-  imports =
-    [ # Include the results of the hardware scan.
-      ./hardware-configuration.nix
-    ];
+  imports = [
+    # Include the results of the hardware scan.
+    ./hardware-configuration.nix
+  ];
 
   # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
   boot.loader.grub.enable = false;
@@ -24,6 +24,7 @@
   environment.systemPackages = with pkgs; [
     chromium
     foot
+    git
   ];
 
   programs.sway = {
@@ -48,7 +49,7 @@
     exec_always 'swaymsg "workspace 1; layout splith"'
     exec chromium --no-sandbox --kiosk --app="https://bfd.firecat53.com" 
     exec 'swaymsg "workspace 1; layout splith"'
-    exec sh -c 'sleep 1 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
+    exec sh -c 'sleep 2 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
 
     # Emergency keybindings for maintenance
     bindsym $mod+Return exec $term
@@ -58,18 +59,31 @@
   # Auto-login and start sway
   services.getty.autologinUser = "dashboard";
 
-  environment.loginShellInit = ''
-    if [ -z $DISPLAY ] && [ "$(tty)" = "/dev/tty1" ]; then
-      exec sway
-    fi
-  '';
+  systemd.user.services.sway = {
+    description = "Sway compositor";
+    wantedBy = [ "graphical-session.target" ];
+    after = [ "graphical-session-pre.target" ];
+    wants = [ "graphical-session-pre.target" ];
+    environment = {
+      XDG_RUNTIME_DIR = "/run/user/1000";
+      WLR_RENDERER = "pixman"; # Software renderer for better Pi compatibility
+    };
+    serviceConfig = {
+      Type = "simple";
+      ExecStart = "${pkgs.sway}/bin/sway";
+      Restart = "on-failure";
+    };
+  };
 
   # Enable keyboard and mouse
   services.libinput.enable = true;
 
   users.users.dashboard = {
     isNormalUser = true;
-    extraGroups = [ "video" "wheel" ];
+    extraGroups = [
+      "video"
+      "wheel"
+    ];
     password = "dashboard";
   };
 

@@ -8,7 +8,7 @@
 
   # VM-specific settings
   virtualisation = {
-    memorySize = 4096;  # 2GB RAM
+    memorySize = 4096; # 2GB RAM
     cores = 2;
     graphics = true;
     qemu.options = [
@@ -22,13 +22,18 @@
 
   networking.hostName = "dashboard-vm";
   networking.networkmanager.enable = true;
+  networking.firewall.enable = true;
 
   time.timeZone = "America/Los_Angeles";
 
-  # Install required packages
+  services.openssh.enable = true;
+
   environment.systemPackages = with pkgs; [
+    bottom
     chromium
-    foot  # Terminal emulator
+    foot
+    git
+    vim
   ];
 
   # Enable sway (simple tiling Wayland compositor)
@@ -65,9 +70,7 @@
   services.getty.autologinUser = "dashboard";
 
   environment.loginShellInit = ''
-    if [ -z $DISPLAY ] && [ "$(tty)" = "/dev/tty1" ]; then
-      exec sway
-    fi
+    [[ "$(tty)" == /dev/tty1 ]] && sleep 2 && sway
   '';
 
   # Enable keyboard and mouse
@@ -76,34 +79,15 @@
   # Create dashboard user
   users.users.dashboard = {
     isNormalUser = true;
-    extraGroups = [ "video" "wheel" ];
-    password = "test123";  # For VM testing only
+    extraGroups = [
+      "video"
+      "wheel"
+    ];
+    password = "dashboard";
   };
 
   # Allow passwordless sudo for testing
   security.sudo.wheelNeedsPassword = false;
 
-#  # Systemd services for automatic browser restart on crash
-#  systemd.user.services.kiosk-left = {
-#    description = "Left Kiosk Display";
-#    wantedBy = [ "sway-session.target" ];
-#    serviceConfig = {
-#      ExecStart = "${pkgs.chromium}/bin/chromium --kiosk --app=https://cadmon.cob.org";
-#      Restart = "always";
-#      RestartSec = "5s";
-#    };
-#  };
-#
-#  systemd.user.services.kiosk-right = {
-#    description = "Right Kiosk Display";
-#    wantedBy = [ "sway-session.target" ];
-#    after = [ "kiosk-left.service" ];
-#    serviceConfig = {
-#      ExecStart = "${pkgs.chromium}/bin/chromium --new-window --kiosk --app=https://bfd.firecat53.com";
-#      Restart = "always";
-#      RestartSec = "5s";
-#    };
-#  };
-
-  system.stateVersion = "25.11";
+  system.stateVersion = "25.05";
 }

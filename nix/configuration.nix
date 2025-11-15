@@ -12,16 +12,25 @@
   boot.loader.generic-extlinux-compatible.enable = true;
 
   networking.hostName = "dashboard"; # Define your hostname.
-
-  # Configure network connections interactively with nmcli or nmtui.
   networking.networkmanager.enable = true;
+  networking.firewall.enable = true;
 
   time.timeZone = "America/Los_Angeles";
 
-  networking.firewall.enable = true;
   services.openssh.enable = true;
 
+  system.autoUpgrade = {
+    enable = true;
+    flags = [
+      "--print-build-logs"
+    ];
+    dates = "monthly";
+    randomizedDelaySec = "45min";
+    allowReboot = true;  # Set to true if you want automatic reboots
+  };
+
   environment.systemPackages = with pkgs; [
+    bottom
     chromium
     foot
     git
@@ -64,7 +73,7 @@
   };
 
   environment.loginShellInit = ''
-    [[ "$(tty)" == /dev/tty1 ]] && sway
+    [[ "$(tty)" == /dev/tty1 ]] && sleep 2 && sway
   '';
 
   # Enable keyboard and mouse
@@ -79,5 +88,5 @@
     password = "dashboard";
   };
 
-  system.stateVersion = "25.11";
+  system.stateVersion = "25.05";
 }

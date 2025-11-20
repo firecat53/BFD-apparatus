@@ -13,6 +13,7 @@
 
   networking.hostName = "dashboard"; # Define your hostname.
   networking.networkmanager.enable = true;
+  networking.networkmanager.wifi.powersave = false;
   networking.firewall.enable = true;
 
   time.timeZone = "America/Los_Angeles";
@@ -26,7 +27,7 @@
     ];
     dates = "monthly";
     randomizedDelaySec = "45min";
-    allowReboot = true;  # Set to true if you want automatic reboots
+    allowReboot = true; # Set to true if you want automatic reboots
   };
 
   environment.systemPackages = with pkgs; [
@@ -62,7 +63,8 @@
     exec sh -c 'sleep 5 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
 
     # Toggle tabbed/split
-    bindsym $mod+s "workspace 1; layout toggle tabbed splith; focus left"
+    bindsym $mod+s layout toggle tabbed splith; focus left
+
     # Emergency keybindings for maintenance
     bindsym $mod+Return exec $term
     bindsym $mod+e exit
@@ -75,7 +77,11 @@
   };
 
   environment.loginShellInit = ''
-    [[ "$(tty)" == /dev/tty1 ]] && sleep 2 && sway
+    if [[ "$(tty)" == /dev/tty1 ]]; then
+      while true; do
+        sway
+      done
+    fi
   '';
 
   # Enable keyboard and mouse

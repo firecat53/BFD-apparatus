@@ -61,6 +61,8 @@
     exec 'swaymsg "workspace 1; layout splith"'
     exec sh -c 'sleep 5 && chromium --no-sandbox --new-window --kiosk --app="https://cadmon.cob.org"'
 
+    # Toggle tabbed/split
+    bindsym $mod+s "workspace 1; layout toggle tabbed splith; focus left"
     # Emergency keybindings for maintenance
     bindsym $mod+Return exec $term
     bindsym $mod+e exit

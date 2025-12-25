@@ -30,6 +30,24 @@
     allowReboot = true; # Set to true if you want automatic reboots
   };
 
+  # Daily wifi reconnect at 0400
+  systemd.services.wifi-reconnect = {
+    description = "Disconnect and reconnect WiFi";
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.bash}/bin/bash -c '${pkgs.networkmanager}/bin/nmcli radio wifi off && sleep 5 && ${pkgs.networkmanager}/bin/nmcli radio wifi on'";
+    };
+  };
+
+  systemd.timers.wifi-reconnect = {
+    description = "Daily WiFi reconnect timer";
+    wantedBy = [ "timers.target" ];
+    timerConfig = {
+      OnCalendar = "04:00";
+      Persistent = true;
+    };
+  };
+
   environment.systemPackages = with pkgs; [
     bottom
     chromium

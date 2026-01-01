@@ -10,6 +10,14 @@
   boot.loader.grub.enable = false;
   # Enables the generation of /boot/extlinux/extlinux.conf
   boot.loader.generic-extlinux-compatible.enable = true;
+  boot.loader.generic-extlinux-compatible.configurationLimit = 5;
+
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 7d";
+  };
+  nix.optimise.automatic = true;
 
   networking.hostName = "dashboard"; # Define your hostname.
   networking.networkmanager.enable = true;
@@ -23,7 +31,6 @@
   system.autoUpgrade = {
     enable = true;
     flags = [
-      "--print-build-logs"
     ];
     dates = "monthly";
     randomizedDelaySec = "45min";

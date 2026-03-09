@@ -38,7 +38,39 @@ To test the kiosk configuration in a VM:
 ./result/bin/run-nixos-vm
 ```
 
-## Production Deployment
+## SD Card Image (Flash and Boot)
+
+Build a complete image you can write directly to a micro-SD card:
+
+```bash
+cd nix
+nix build .#sdImage
+```
+
+The image is at `result/sd-image/*.img.zst`. Flash it:
+
+```bash
+zstd -d result/sd-image/*.img.zst --stdout | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+Replace `/dev/sdX` with your SD card device (check `lsblk`).
+
+**First boot:** WiFi credentials aren't included in the image. Connect via
+ethernet and SSH in, or attach a keyboard and run `nmtui` to configure WiFi.
+
+**Build note:** Nix will substitute pre-built aarch64 packages directly from
+cache.nixos.org — no cross-compilation needed. If your machine isn't already
+configured to handle aarch64, add this to `/etc/nix/nix.conf`:
+
+```
+extra-platforms = aarch64-linux
+```
+
+Or on NixOS, add `boot.binfmt.emulatedSystems = [ "aarch64-linux" ]` to your
+host config (which sets this automatically). In practice, all packages in this
+config are in the cache, so the build is mostly just downloading.
+
+## Production Deployment (existing Pi with NixOS)
 
 ```bash
 git clone https://github.com/firecat53/bfd-apparatus ~/dashboard

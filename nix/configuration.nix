@@ -19,6 +19,22 @@
   };
   nix.optimise.automatic = true;
 
+  # Remote builds — offload compilation to a more powerful server.
+  # See README.md "Remote Build Setup" for one-time SSH key setup steps.
+  nix.distributedBuilds = true;
+  nix.buildMachines = [{
+    hostName = "build-server";       # replace with server IP or hostname
+    systems = [ "aarch64-linux" ];
+    protocol = "ssh-ng";
+    maxJobs = 4;                     # adjust to server core count
+    speedFactor = 10;
+    supportedFeatures = [ "nixos-test" "big-parallel" "kvm" ];
+    sshUser = "nix-build";
+    sshKey = "/root/.ssh/nix-build-key";
+  }];
+  # Let the remote builder pull from cache.nixos.org directly
+  nix.settings.builders-use-substitutes = true;
+
   networking.hostName = "dashboard"; # Define your hostname.
   networking.networkmanager.enable = true;
   networking.networkmanager.wifi.powersave = false;
@@ -31,10 +47,11 @@
   system.autoUpgrade = {
     enable = true;
     flags = [
+      "--build-host" "nix-build@build-server"  # build on the server
     ];
     dates = "monthly";
     randomizedDelaySec = "45min";
-    allowReboot = true; # Set to true if you want automatic reboots
+    allowReboot = true;
   };
 
   # Daily wifi reconnect at 0400

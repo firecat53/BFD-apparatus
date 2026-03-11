@@ -12,6 +12,10 @@
   boot.loader.generic-extlinux-compatible.enable = true;
   boot.loader.generic-extlinux-compatible.configurationLimit = 5;
 
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
   nix.gc = {
     automatic = true;
     dates = "weekly";
@@ -30,12 +34,24 @@
 
   system.autoUpgrade = {
     enable = true;
-    flags = [
-    ];
+    flake = "/home/dashboard/dashboard/nix#dashboard";
     dates = "monthly";
     randomizedDelaySec = "45min";
-    allowReboot = true; # Set to true if you want automatic reboots
+    allowReboot = true;
   };
+
+  # Pull latest config and update flake inputs before auto-upgrade rebuild.
+  # Run as dashboard user to preserve flake.lock file ownership.
+  systemd.services.nixos-upgrade.serviceConfig.ExecStartPre =
+    let
+      script = pkgs.writeShellScript "pre-upgrade" ''
+        ${pkgs.util-linux}/bin/runuser -u dashboard -- \
+          ${pkgs.git}/bin/git -C /home/dashboard/dashboard pull
+        ${pkgs.util-linux}/bin/runuser -u dashboard -- \
+          ${pkgs.nix}/bin/nix flake update --flake /home/dashboard/dashboard/nix
+      '';
+    in
+    "${script}";
 
   # Daily wifi reconnect at 0400
   systemd.services.wifi-reconnect = {

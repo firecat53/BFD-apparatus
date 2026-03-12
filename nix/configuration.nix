@@ -82,7 +82,8 @@
   programs.git = {
     enable = true;
     config = {
-      safe."directory" = "/home/dashboard/dashboard/";
+      safe."directory" = "/home/dashboard/dashboard";
+    };
   };
 
   programs.sway = {

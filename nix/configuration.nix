@@ -75,9 +75,15 @@
     bottom
     chromium
     foot
-    git
     vim
   ];
+
+  # Enable git
+  programs.git = {
+    enable = true;
+    config = {
+      safe."directory" = "/home/dashboard/dashboard/";
+  };
 
   programs.sway = {
     enable = true;
